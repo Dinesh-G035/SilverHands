@@ -1,9 +1,48 @@
-import { Bell, Globe, Accessibility, Menu, X, Home, Search, ShoppingBag, LayoutDashboard, MessageCircle, User, LogOut, PlusCircle } from 'lucide-react';
+import { Bell, Globe, Accessibility, Menu, X, Home, Search, ShoppingBag, LayoutDashboard, MessageCircle, User, LogOut, PlusCircle, Check, Sparkles, Calendar, DollarSign, Star } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useApp } from '../context';
 
 const languages = ['English', 'Tamil', 'Hindi', 'Telugu', 'Malayalam', 'Kannada'];
+
+const initialNotifications = [
+  {
+    id: 'n1',
+    title: 'New Booking Request',
+    desc: 'Priya Ramesh requested Maths Tuition for Sat, 10 AM',
+    time: '10 mins ago',
+    unread: true,
+    type: 'booking',
+    path: '/messages',
+  },
+  {
+    id: 'n2',
+    title: 'Payment Received',
+    desc: '₹800 transferred to your account from Karthik Venkat',
+    time: '2 hours ago',
+    unread: true,
+    type: 'payment',
+    path: '/dashboard',
+  },
+  {
+    id: 'n3',
+    title: 'New 5-Star Review',
+    desc: 'Deepa left a review: "Excellent teacher, very patient!"',
+    time: 'Yesterday',
+    unread: true,
+    type: 'review',
+    path: '/provider/u1',
+  },
+  {
+    id: 'n4',
+    title: 'SilverAI Opportunity Alert',
+    desc: 'High demand for weekend maths tutoring in your area!',
+    time: '2 days ago',
+    unread: false,
+    type: 'ai',
+    path: '/pricing-assistant',
+  },
+];
 
 const sidebarLinks = [
   { label: 'Home', icon: Home, path: '/' },
@@ -18,9 +57,24 @@ const sidebarLinks = [
 export default function Header() {
   const { language, setLanguage, seniorMode, setSeniorMode, isLoggedIn, logout, currentUser } = useApp();
   const [showLangMenu, setShowLangMenu] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
+  const [notifications, setNotifications] = useState(initialNotifications);
+
   const navigate = useNavigate();
   const location = useLocation();
+
+  const unreadCount = notifications.filter(n => n.unread).length;
+
+  const markAllRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, unread: false })));
+  };
+
+  const handleNotificationClick = (notif) => {
+    setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, unread: false } : n));
+    setShowNotifications(false);
+    navigate(notif.path);
+  };
 
   return (
     <>
@@ -49,8 +103,9 @@ export default function Header() {
           </nav>
 
           <div className="flex items-center gap-2">
+            {/* Language Selector */}
             <div className="relative">
-              <button onClick={() => setShowLangMenu(!showLangMenu)} className="p-2 rounded-xl hover:bg-gray-100 transition-colors text-gray-500" title="Change Language" id="lang-toggle">
+              <button onClick={() => { setShowLangMenu(!showLangMenu); setShowNotifications(false); }} className="p-2 rounded-xl hover:bg-gray-100 transition-colors text-gray-500" title="Change Language" id="lang-toggle">
                 <Globe className="w-5 h-5" />
               </button>
               {showLangMenu && (
@@ -64,15 +119,90 @@ export default function Header() {
               )}
             </div>
 
+            {/* Senior Mode Toggle */}
             <button onClick={() => setSeniorMode(!seniorMode)} className={`p-2 rounded-xl transition-colors ${seniorMode ? 'bg-primary-100 text-primary-700' : 'hover:bg-gray-100 text-gray-500'}`} title={seniorMode ? 'Senior Mode ON' : 'Senior Mode OFF'} id="senior-mode-toggle">
               <Accessibility className="w-5 h-5" />
             </button>
 
-            <button className="relative p-2 rounded-xl hover:bg-gray-100 transition-colors text-gray-500" title="Notifications" id="notifications">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
-            </button>
+            {/* Notifications Popover */}
+            <div className="relative">
+              <button
+                onClick={() => { setShowNotifications(!showNotifications); setShowLangMenu(false); }}
+                className="relative p-2 rounded-xl hover:bg-gray-100 transition-colors text-gray-500"
+                title="Notifications"
+                id="notifications"
+              >
+                <Bell className="w-5 h-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
+                )}
+              </button>
 
+              {showNotifications && (
+                <div className="absolute right-0 top-12 w-80 md:w-96 bg-white rounded-3xl shadow-2xl border border-gray-100 py-3 z-50 fade-in">
+                  <div className="px-4 pb-2.5 border-b border-gray-100 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-extrabold text-gray-800 text-sm">Notifications</h3>
+                      {unreadCount > 0 && (
+                        <span className="text-[10px] bg-primary-100 text-primary-700 font-bold px-2 py-0.5 rounded-full">
+                          {unreadCount} new
+                        </span>
+                      )}
+                    </div>
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={markAllRead}
+                        className="text-[11px] text-primary-600 font-bold hover:underline flex items-center gap-1"
+                      >
+                        <Check className="w-3 h-3" /> Mark all read
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="max-h-80 overflow-y-auto divide-y divide-gray-50">
+                    {notifications.map((n) => (
+                      <div
+                        key={n.id}
+                        onClick={() => handleNotificationClick(n)}
+                        className={`p-3.5 flex items-start gap-3 cursor-pointer transition-colors ${
+                          n.unread ? 'bg-primary-50/40 hover:bg-primary-50/80' : 'hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-white ${
+                          n.type === 'booking' ? 'bg-primary-500' :
+                          n.type === 'payment' ? 'bg-emerald-500' :
+                          n.type === 'review' ? 'bg-amber-500' : 'gradient-bg'
+                        }`}>
+                          {n.type === 'booking' && <Calendar className="w-4 h-4" />}
+                          {n.type === 'payment' && <span className="font-bold text-xs">₹</span>}
+                          {n.type === 'review' && <Star className="w-4 h-4 fill-white" />}
+                          {n.type === 'ai' && <Sparkles className="w-4 h-4" />}
+                        </div>
+
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <h4 className={`text-xs font-bold ${n.unread ? 'text-gray-900' : 'text-gray-700'}`}>{n.title}</h4>
+                            <span className="text-[9px] text-gray-400">{n.time}</span>
+                          </div>
+                          <p className="text-[11px] text-gray-500 mt-0.5 leading-snug">{n.desc}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="p-2 border-t border-gray-100 text-center">
+                    <button
+                      onClick={() => { setShowNotifications(false); navigate('/dashboard'); }}
+                      className="text-xs text-primary-700 font-bold hover:underline"
+                    >
+                      View All Activity in Dashboard →
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Profile / Login */}
             {isLoggedIn ? (
               <button onClick={() => navigate('/dashboard')} className="w-9 h-9 rounded-full gradient-bg flex items-center justify-center text-white text-sm font-bold shadow-md" id="user-avatar">
                 {currentUser?.name?.charAt(0) || 'U'}
@@ -90,7 +220,9 @@ export default function Header() {
         </div>
       </header>
 
-      {showLangMenu && <div className="fixed inset-0 z-40" onClick={() => setShowLangMenu(false)} />}
+      {(showLangMenu || showNotifications) && (
+        <div className="fixed inset-0 z-40" onClick={() => { setShowLangMenu(false); setShowNotifications(false); }} />
+      )}
 
       {showSidebar && (
         <>
