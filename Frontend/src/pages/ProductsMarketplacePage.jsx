@@ -1,14 +1,24 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Search, ShoppingBag, Star, Plus } from 'lucide-react';
-import { mockProducts } from '../data';
+import { api } from '../api';
+import { useApp } from '../context';
 
 const categories = ['All', 'Food', 'Handicrafts', 'Clothing', 'Art', 'Home Décor', 'Traditional Products'];
 
 export default function ProductsMarketplacePage() {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [cartCount, setCartCount] = useState(0);
+  const [products, setProducts] = useState([]);
+  const [error, setError] = useState('');
+  const { accessToken } = useApp();
 
-  const filteredProducts = mockProducts.filter(p => 
+  useEffect(() => {
+    const params = new URLSearchParams({ limit: '50' });
+    if (selectedCategory !== 'All') params.set('category', selectedCategory);
+    api(`/products?${params}`).then(setProducts).catch((requestError) => setError(requestError.message));
+  }, [selectedCategory]);
+
+  const filteredProducts = products.filter(p => 
     selectedCategory === 'All' || p.category === selectedCategory
   );
 
@@ -61,8 +71,8 @@ export default function ProductsMarketplacePage() {
                 </span>
               </div>
 
-              <span className="text-[11px] text-gray-400 font-medium block">By {prod.sellerName}</span>
-              <h3 className="font-bold text-gray-800 text-sm mb-1 leading-snug line-clamp-1">{prod.name}</h3>
+              <span className="text-[11px] text-gray-400 font-medium block">By {prod.seller?.name || 'SilverHands Seller'}</span>
+              <h3 className="font-bold text-gray-800 text-sm mb-1 leading-snug line-clamp-1">{prod.title}</h3>
               <p className="text-[11px] text-gray-500 line-clamp-2 mb-3">{prod.description}</p>
             </div>
 
@@ -75,7 +85,10 @@ export default function ProductsMarketplacePage() {
               </div>
 
               <button
-                onClick={() => setCartCount(prev => prev + 1)}
+                onClick={async () => {
+                  try { await api('/cart', { method: 'POST', body: { productId: prod.id, quantity: 1 }, token: accessToken }); setCartCount((count) => count + 1); }
+                  catch (requestError) { setError(requestError.message); }
+                }}
                 className="p-2.5 gradient-bg text-white rounded-xl shadow-md hover:scale-105 active:scale-95 transition-transform"
                 title="Add to Cart"
               >
@@ -85,6 +98,8 @@ export default function ProductsMarketplacePage() {
           </div>
         ))}
       </div>
+      {error && <p className="mt-6 text-center text-sm text-red-600">{error}</p>}
+      {!error && products.length === 0 && <p className="mt-6 text-center text-sm text-gray-500">No published products found yet.</p>}
     </div>
   );
 }

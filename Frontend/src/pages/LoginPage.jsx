@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context';
 import { Phone, ArrowRight, ShieldCheck, UserCheck } from 'lucide-react';
+import { api } from '../api';
 
 export default function LoginPage() {
   const [tab, setTab] = useState('login');
@@ -13,25 +14,35 @@ export default function LoginPage() {
   const [language, setLanguageChoice] = useState('Tamil');
   const [location, setLocation] = useState('Chennai');
 
-  const { loginDemo } = useApp();
+  const { loginDemo, login } = useApp();
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
 
-  const handleSendOtp = (e) => {
+  const handleSendOtp = async (e) => {
     e.preventDefault();
-    if (phone.length >= 10) setStep(2);
+    try {
+      setBusy(true); setError('');
+      await api('/auth/send-otp', { method: 'POST', body: { mobile: phone.replace(/\D/g, '').slice(-10) } });
+      if (tab === 'signup') setTab('login');
+      setStep(2);
+    } catch (requestError) { setError(requestError.message); } finally { setBusy(false); }
   };
 
-  const handleLoginSubmit = (e) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
-    loginDemo();
-    navigate('/onboarding');
+    try {
+      setBusy(true); setError('');
+      const session = await api('/auth/verify-otp', { method: 'POST', body: {
+        mobile: phone.replace(/\D/g, '').slice(-10), otp, name: name || undefined,
+        role: userType === 'customer' ? 'customer' : 'provider',
+      }});
+      login(session);
+      navigate('/onboarding');
+    } catch (requestError) { setError(requestError.message); } finally { setBusy(false); }
   };
 
-  const handleSignupSubmit = (e) => {
-    e.preventDefault();
-    loginDemo();
-    navigate('/onboarding');
-  };
+  const handleSignupSubmit = handleSendOtp;
 
   return (
     <div className="min-h-[85vh] flex items-center justify-center px-4 py-8 safe-bottom">
@@ -89,7 +100,7 @@ export default function LoginPage() {
                   type="submit"
                   className="w-full py-3.5 gradient-bg text-white font-bold rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 text-sm"
                 >
-                  Continue with OTP <ArrowRight className="w-4 h-4" />
+                  {busy ? 'Sending…' : <>Continue with OTP <ArrowRight className="w-4 h-4" /></>}
                 </button>
               </form>
             ) : (
@@ -112,7 +123,7 @@ export default function LoginPage() {
                   type="submit"
                   className="w-full py-3.5 gradient-bg text-white font-bold rounded-xl shadow-md hover:shadow-lg transition-all text-sm"
                 >
-                  Verify & Enter SilverHands
+                  {busy ? 'Verifying…' : 'Verify & Enter SilverHands'}
                 </button>
               </form>
             )}
@@ -202,7 +213,7 @@ export default function LoginPage() {
               type="submit"
               className="w-full py-3.5 gradient-bg text-white font-bold rounded-xl shadow-md hover:shadow-lg transition-all text-sm mt-2"
             >
-              Create Account
+              {busy ? 'Sending OTP…' : 'Create Account'}
             </button>
           </form>
         )}
@@ -219,6 +230,7 @@ export default function LoginPage() {
             By continuing, you agree to SilverHands Terms of Service & Privacy Policy.
           </p>
         </div>
+        {error && <p className="mt-3 text-center text-sm text-red-600">{error}</p>}
       </div>
     </div>
   );

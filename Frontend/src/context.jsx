@@ -4,8 +4,10 @@ import { mockUser } from './data';
 const AppContext = createContext(undefined);
 
 export function AppProvider({ children }) {
-  const [currentUser, setCurrentUser] = useState(null);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const savedSession = JSON.parse(localStorage.getItem('silverhands_session') || 'null');
+  const [currentUser, setCurrentUser] = useState(savedSession?.user || null);
+  const [isLoggedIn, setIsLoggedIn] = useState(Boolean(savedSession));
+  const [accessToken, setAccessToken] = useState(savedSession?.accessToken || null);
   const [seniorMode, setSeniorMode] = useState(false);
   const [language, setLanguage] = useState('English');
   const [currentTab, setCurrentTab] = useState('home');
@@ -16,10 +18,20 @@ export function AppProvider({ children }) {
     setIsLoggedIn(true);
   };
 
+  const login = (session) => {
+    const saved = { user: session.user, accessToken: session.accessToken, refreshToken: session.refreshToken };
+    localStorage.setItem('silverhands_session', JSON.stringify(saved));
+    setCurrentUser(session.user);
+    setAccessToken(session.accessToken);
+    setIsLoggedIn(true);
+  };
+
   const logout = () => {
     setCurrentUser(null);
     setIsLoggedIn(false);
     setDemoStep(0);
+    setAccessToken(null);
+    localStorage.removeItem('silverhands_session');
   };
 
   const handleSeniorMode = (v) => {
@@ -35,8 +47,8 @@ export function AppProvider({ children }) {
     <AppContext.Provider
       value={{
         currentUser, isLoggedIn, seniorMode, language, currentTab, demoStep,
-        setCurrentUser, setIsLoggedIn, setLanguage, setSeniorMode: handleSeniorMode,
-        setCurrentTab, setDemoStep, loginDemo, logout,
+        setCurrentUser, setIsLoggedIn, setLanguage, setSeniorMode: handleSeniorMode, accessToken,
+        setCurrentTab, setDemoStep, loginDemo, login, logout,
       }}
     >
       {children}

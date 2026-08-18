@@ -1,19 +1,27 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Mic, MapPin, Star, Filter, CheckCircle2, ChevronRight } from 'lucide-react';
-import { mockServices } from '../data';
+import { api } from '../api';
 
 const categories = ['All', 'Tutoring', 'Cooking', 'Tailoring', 'Gardening', 'Mentoring', 'Language', 'Music', 'Traditional Arts'];
 
 export default function ServicesMarketplacePage() {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [services, setServices] = useState([]);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const filteredServices = mockServices.filter((s) => {
+  useEffect(() => {
+    const params = new URLSearchParams({ limit: '50' });
+    if (selectedCategory !== 'All') params.set('category', selectedCategory);
+    api(`/services?${params}`).then(setServices).catch((requestError) => setError(requestError.message));
+  }, [selectedCategory]);
+
+  const filteredServices = services.filter((s) => {
     const matchCat = selectedCategory === 'All' || s.category === selectedCategory;
     const matchQuery = s.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                       s.providerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                       (s.provider?.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                        s.description.toLowerCase().includes(searchQuery.toLowerCase());
     return matchCat && matchQuery;
   });
@@ -75,14 +83,14 @@ export default function ServicesMarketplacePage() {
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
                   <div className="w-11 h-11 rounded-full gradient-bg text-white font-bold flex items-center justify-center text-sm shadow-sm">
-                    {svc.providerName.split(' ').map(n => n[0]).join('')}
+                    {(svc.provider?.name || 'Provider').split(' ').map(n => n[0]).join('')}
                   </div>
                   <div>
                     <h4 className="font-bold text-gray-800 text-sm flex items-center gap-1">
-                      {svc.providerName}
-                      {svc.verified && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+                      {svc.provider?.name || 'SilverHands Provider'}
+                      {svc.provider?.verificationStatus?.identityVerified && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
                     </h4>
-                    <span className="text-[11px] text-gray-400 font-medium">{svc.experience} exp</span>
+                    <span className="text-[11px] text-gray-400 font-medium">{svc.yearsOfExperience || 0} years exp</span>
                   </div>
                 </div>
 
@@ -100,7 +108,7 @@ export default function ServicesMarketplacePage() {
               {/* Badges */}
               <div className="flex items-center gap-2 text-[11px] text-gray-500 mb-4">
                 <span className="flex items-center gap-1 bg-gray-50 px-2.5 py-1 rounded-lg">
-                  <MapPin className="w-3 h-3 text-gray-400" /> {svc.distance} km ({svc.location})
+                  <MapPin className="w-3 h-3 text-gray-400" /> {svc.approximateDistanceKm?.toFixed(1) || 'Local'} km ({svc.city})
                 </span>
                 <span className="bg-primary-50 text-primary-700 font-semibold px-2.5 py-1 rounded-lg capitalize">
                   {svc.mode}
@@ -112,11 +120,11 @@ export default function ServicesMarketplacePage() {
             <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
               <div>
                 <span className="text-lg font-extrabold text-gray-800">₹{svc.price}</span>
-                <span className="text-[11px] text-gray-400 font-medium">/{svc.priceUnit}</span>
+                <span className="text-[11px] text-gray-400 font-medium">/{svc.priceType}</span>
               </div>
 
               <button
-                onClick={() => navigate(`/provider/${svc.providerId}`)}
+                onClick={() => navigate(`/provider/${svc.provider?.id || svc.provider}`)}
                 className="px-4 py-2 bg-primary-50 text-primary-700 font-bold rounded-xl text-xs hover:bg-primary-100 transition-colors flex items-center gap-1"
               >
                 View Profile <ChevronRight className="w-3.5 h-3.5" />
@@ -125,6 +133,8 @@ export default function ServicesMarketplacePage() {
           </div>
         ))}
       </div>
+      {error && <p className="mt-6 text-center text-sm text-red-600">{error}</p>}
+      {!error && services.length === 0 && <p className="mt-6 text-center text-sm text-gray-500">No published services found yet.</p>}
     </div>
   );
 }
