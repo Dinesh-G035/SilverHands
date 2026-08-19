@@ -1,28 +1,101 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Sparkles, CheckCircle2, Award, ArrowRight, Edit, Plus } from 'lucide-react';
 import { useApp } from '../context';
+import { api } from '../api';
+
+const defaultSkills = [
+  { name: 'Traditional South Indian Cooking', icon: '🍳', confidence: 95, verified: true },
+  { name: 'Mathematics & Vedic Maths', icon: '📐', confidence: 92, verified: true },
+  { name: 'Food Preservation & Pickling', icon: '🫙', confidence: 88, verified: true },
+  { name: 'Student Tutoring', icon: '📚', confidence: 85, verified: false },
+];
+
+const defaultProfile = {
+  profileTitle: 'Traditional Cooking & Education Expert',
+  yearsOfExperience: 20,
+};
+
+const skillIconMap = {
+  cooking: '🍳', tutoring: '📚', maths: '📐', mathematics: '📐',
+  tailoring: '🧵', gardening: '🌿', music: '🎵', language: '🗣️',
+  mentoring: '🎓', embroidery: '🪡', food: '🫙', default: '⭐',
+};
+
+function getSkillIcon(name) {
+  const lower = (name || '').toLowerCase();
+  for (const [key, icon] of Object.entries(skillIconMap)) {
+    if (lower.includes(key)) return icon;
+  }
+  return skillIconMap.default;
+}
 
 export default function SkillIdentificationPage() {
-  const [loading, setLoading] = useState(true);
-  const [skills, setSkills] = useState([
-    { name: 'Traditional South Indian Cooking', icon: '🍳', confidence: 95, verified: true },
-    { name: 'Mathematics & Vedic Maths', icon: '📐', confidence: 92, verified: true },
-    { name: 'Food Preservation & Pickling', icon: '🫙', confidence: 88, verified: true },
-    { name: 'Student Tutoring', icon: '📚', confidence: 85, verified: false },
-  ]);
-
-  const { loginDemo } = useApp();
+  const location = useLocation();
   const navigate = useNavigate();
+  const { login, loginDemo, accessToken, isLoggedIn } = useApp();
+
+  const voiceProfile = location.state?.voiceProfile;
+
+  const [loading, setLoading] = useState(true);
+  const [skills, setSkills] = useState(defaultSkills);
+  const [profileTitle, setProfileTitle] = useState(defaultProfile.profileTitle);
+  const [yearsOfExperience, setYearsOfExperience] = useState(defaultProfile.yearsOfExperience);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
+    // If we received AI-parsed voice profile data, use it
+    if (voiceProfile) {
+      if (Array.isArray(voiceProfile.skills) && voiceProfile.skills.length > 0) {
+        setSkills(
+          voiceProfile.skills.map((s, idx) => ({
+            name: typeof s === 'string' ? s : s.name || `Skill ${idx + 1}`,
+            icon: getSkillIcon(typeof s === 'string' ? s : s.name),
+            confidence: s.confidence || (95 - idx * 5),
+            verified: idx < 2,
+          }))
+        );
+      }
+      if (voiceProfile.profileTitle) setProfileTitle(voiceProfile.profileTitle);
+      if (voiceProfile.yearsOfExperience) setYearsOfExperience(voiceProfile.yearsOfExperience);
+    }
+
     const timer = setTimeout(() => setLoading(false), 1800);
     return () => clearTimeout(timer);
-  }, []);
+  }, [voiceProfile]);
 
-  const handleConfirmProfile = () => {
-    loginDemo();
-    navigate('/opportunities');
+  const handleConfirmProfile = async () => {
+    const skillNames = skills.map((s) => s.name);
+
+    if (accessToken) {
+      try {
+        setBusy(true);
+        setError('');
+        const result = await api('/ai/confirm-profile', {
+          method: 'POST',
+          body: { skills: skillNames, yearsOfExperience, profileTitle },
+          token: accessToken,
+        });
+        // Update context with returned user data if available
+        if (result?.user) {
+          // Re-fetch wouldn't be needed since we already have the token;
+          // just navigate forward
+        }
+        navigate('/opportunities');
+      } catch (requestError) {
+        setError(requestError.message);
+        // Fallback: still navigate forward for demo purposes
+        loginDemo();
+        navigate('/opportunities');
+      } finally {
+        setBusy(false);
+      }
+    } else {
+      // Demo mode
+      loginDemo();
+      navigate('/opportunities');
+    }
   };
 
   return (
@@ -60,8 +133,8 @@ export default function SkillIdentificationPage() {
               </div>
               <div>
                 <span className="text-[10px] font-bold tracking-wider text-primary-600 uppercase">AI Suggested Title</span>
-                <h3 className="text-base font-extrabold text-gray-800 leading-snug">Traditional Cooking & Education Expert</h3>
-                <p className="text-xs text-gray-500 mt-0.5">Detected Experience: <strong className="text-gray-700">20+ Years</strong></p>
+                <h3 className="text-base font-extrabold text-gray-800 leading-snug">{profileTitle}</h3>
+                <p className="text-xs text-gray-500 mt-0.5">Detected Experience: <strong className="text-gray-700">{yearsOfExperience}+ Years</strong></p>
               </div>
             </div>
 
@@ -102,11 +175,13 @@ export default function SkillIdentificationPage() {
               </button>
               <button
                 onClick={handleConfirmProfile}
+                disabled={busy}
                 className="flex-1 py-3.5 gradient-bg text-white font-bold rounded-2xl text-sm shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
               >
-                Confirm & See Opportunities <ArrowRight className="w-4 h-4" />
+                {busy ? 'Saving...' : 'Confirm & See Opportunities'} <ArrowRight className="w-4 h-4" />
               </button>
             </div>
+            {error && <p className="text-sm text-red-600 mt-3 text-center">{error}</p>}
           </div>
         )}
       </div>

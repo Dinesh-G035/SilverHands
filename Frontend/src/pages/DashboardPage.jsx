@@ -1,13 +1,54 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { IndianRupee, ShoppingBag, Star, TrendingUp, Calendar, Bell, Sparkles, ChevronRight, PlusCircle, MessageCircle, DollarSign, Settings } from 'lucide-react';
 import { useApp } from '../context';
 import { mockUser, mockReviews } from '../data';
+import { api } from '../api';
 
 export default function DashboardPage() {
-  const { currentUser } = useApp();
+  const { currentUser, accessToken } = useApp();
   const navigate = useNavigate();
 
   const user = currentUser || mockUser;
+
+  const [metrics, setMetrics] = useState({
+    totalEarnings: 12450,
+    bookingCount: 28,
+    rating: 4.8,
+    reviewCount: 32,
+  });
+
+  const [recentActivities, setRecentActivities] = useState([
+    { title: 'New Booking Received', sub: 'Maths Tuition (Priya Ramesh)', time: 'Today, 10:30 AM', price: '₹400', status: 'Confirmed' },
+    { title: 'Payment Received', sub: '₹800 for 2 hours session', time: 'Today, 09:15 AM', price: '₹800', status: 'Paid' },
+    { title: 'New 5-Star Review', sub: '"Excellent teacher, very patient!"', time: 'Yesterday', price: '⭐ 5.0', status: 'Review' },
+  ]);
+
+  useEffect(() => {
+    if (accessToken) {
+      // Fetch user's bookings
+      api('/bookings', { token: accessToken })
+        .then((data) => {
+          if (Array.isArray(data) && data.length > 0) {
+            const mappedActivities = data.slice(0, 5).map((b) => ({
+              title: `Booking ${b.status?.toUpperCase() || 'REQUEST'}`,
+              sub: `${b.serviceId?.title || 'Service'} (${b.customerId?.name || 'Customer'})`,
+              time: new Date(b.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' }),
+              price: `₹${b.estimatedPrice || 400}`,
+              status: b.status || 'Pending',
+            }));
+
+            setRecentActivities(mappedActivities);
+            setMetrics((prev) => ({
+              ...prev,
+              bookingCount: data.length,
+              totalEarnings: data.reduce((acc, curr) => acc + (curr.estimatedPrice || 0), 0) || prev.totalEarnings,
+            }));
+          }
+        })
+        .catch(() => {});
+    }
+  }, [accessToken]);
 
   const quickActions = [
     { label: 'My Services', icon: '📚', path: '/services' },
@@ -22,16 +63,18 @@ export default function DashboardPage() {
       <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm mb-6 flex flex-col md:flex-row items-center justify-between gap-4 fade-in">
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-full gradient-bg text-white text-2xl font-bold flex items-center justify-center shadow-md">
-            {user.name.charAt(0)}
+            {(user.name || 'U').charAt(0)}
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-xl font-extrabold text-gray-800">Hello, {user.name}</h2>
               <span className="text-[10px] bg-primary-100 text-primary-700 font-bold px-2 py-0.5 rounded-full capitalize">
-                {user.type}
+                {user.role || user.type || 'Provider'}
               </span>
             </div>
-            <p className="text-xs text-gray-400 mt-0.5">Senior Education & Vedic Maths Expert • {user.location}</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {user.bio || 'Senior Education & Vedic Maths Expert'} • {user.city || user.location || 'Chennai'}
+            </p>
           </div>
         </div>
 
@@ -47,7 +90,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-3 gap-3 mb-6">
         <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm">
           <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Total Earnings</span>
-          <p className="text-2xl font-extrabold text-primary-700 mt-1">₹12,450</p>
+          <p className="text-2xl font-extrabold text-primary-700 mt-1">₹{metrics.totalEarnings.toLocaleString()}</p>
           <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-0.5 mt-1">
             <TrendingUp className="w-3 h-3" /> +18% this month
           </span>
@@ -55,16 +98,16 @@ export default function DashboardPage() {
 
         <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm">
           <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Bookings / Orders</span>
-          <p className="text-2xl font-extrabold text-gray-800 mt-1">28</p>
+          <p className="text-2xl font-extrabold text-gray-800 mt-1">{metrics.bookingCount}</p>
           <span className="text-[10px] text-gray-400 font-medium block mt-1">This month</span>
         </div>
 
         <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm">
           <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Rating</span>
           <p className="text-2xl font-extrabold text-amber-500 mt-1 flex items-center gap-1">
-            4.8 <Star className="w-5 h-5 fill-amber-400 text-amber-400" />
+            {metrics.rating} <Star className="w-5 h-5 fill-amber-400 text-amber-400" />
           </p>
-          <span className="text-[10px] text-gray-400 font-medium block mt-1">From 32 reviews</span>
+          <span className="text-[10px] text-gray-400 font-medium block mt-1">From {metrics.reviewCount} reviews</span>
         </div>
       </div>
 
@@ -77,7 +120,7 @@ export default function DashboardPage() {
           <div>
             <h3 className="font-extrabold text-gray-800 text-sm">SilverAI Opportunity Suggestion</h3>
             <p className="text-xs text-gray-600 mt-0.5">
-              Based on your tutoring profile, <strong>weekend mathematics classes</strong> have a 40% higher demand in Chennai right now.
+              Based on your tutoring profile, <strong>weekend mathematics classes</strong> have a 40% higher demand in {user.city || user.location || 'Chennai'} right now.
             </p>
           </div>
         </div>
@@ -97,11 +140,7 @@ export default function DashboardPage() {
             <h3 className="font-extrabold text-gray-800 text-base mb-4">Recent Activity</h3>
             
             <div className="space-y-3">
-              {[
-                { title: 'New Booking Received', sub: 'Maths Tuition (Priya Ramesh)', time: 'Today, 10:30 AM', price: '₹400', status: 'Confirmed' },
-                { title: 'Payment Received', sub: '₹800 for 2 hours session', time: 'Today, 09:15 AM', price: '₹800', status: 'Paid' },
-                { title: 'New 5-Star Review', sub: '"Excellent teacher, very patient!"', time: 'Yesterday', price: '⭐ 5.0', status: 'Review' },
-              ].map((act, i) => (
+              {recentActivities.map((act, i) => (
                 <div key={i} className="flex items-center justify-between p-3.5 bg-gray-50 rounded-2xl border border-gray-100">
                   <div>
                     <h4 className="font-bold text-gray-800 text-xs">{act.title}</h4>

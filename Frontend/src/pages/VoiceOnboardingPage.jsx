@@ -1,26 +1,114 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mic, Square, RefreshCw, ArrowRight, Volume2, Globe } from 'lucide-react';
 import { useApp } from '../context';
+import { api } from '../api';
+
+const DEMO_TRANSCRIPT =
+  'I have been cooking traditional Tamil food for 20 years and teaching maths to school children in Chennai.';
 
 export default function VoiceOnboardingPage() {
   const [isRecording, setIsRecording] = useState(false);
   const [recorded, setRecorded] = useState(false);
   const [selectedLang, setSelectedLang] = useState('Tamil');
+  const [transcript, setTranscript] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
 
-  const { language, setLanguage } = useApp();
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+
+  const { language, setLanguage, accessToken } = useApp();
   const navigate = useNavigate();
 
-  const handleStartRecording = () => {
+  /* ---------- Recording helpers ---------- */
+
+  const startRealRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        stream.getTracks().forEach((t) => t.stop());
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecorded(false);
+      setTranscript('');
+      setError('');
+    } catch {
+      // Microphone not available — fall back to simulated recording
+      simulateRecording();
+    }
+  };
+
+  const simulateRecording = () => {
     setIsRecording(true);
     setRecorded(false);
+    setTranscript('');
+    setError('');
     setTimeout(() => {
       setIsRecording(false);
       setRecorded(true);
+      setTranscript(DEMO_TRANSCRIPT);
     }, 4000);
   };
 
-  const handleStopRecording = () => {
+  const handleStartRecording = () => {
+    if (accessToken) {
+      startRealRecording();
+    } else {
+      simulateRecording();
+    }
+  };
+
+  const handleStopRecording = async () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+
+      // Wait briefly for ondataavailable to fire
+      await new Promise((r) => setTimeout(r, 300));
+
+      const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+
+      // Try uploading to backend for transcription
+      if (accessToken && blob.size > 0) {
+        try {
+          setBusy(true);
+          const formData = new FormData();
+          formData.append('audio', blob, 'recording.webm');
+
+          const response = await fetch(
+            `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1'}/ai/upload-voice`,
+            {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${accessToken}` },
+              body: formData,
+            }
+          );
+          const payload = await response.json().catch(() => ({}));
+          if (response.ok && payload.data?.transcript) {
+            setTranscript(payload.data.transcript);
+          } else {
+            // Fallback to demo transcript
+            setTranscript(DEMO_TRANSCRIPT);
+          }
+        } catch {
+          setTranscript(DEMO_TRANSCRIPT);
+        } finally {
+          setBusy(false);
+        }
+      } else {
+        setTranscript(DEMO_TRANSCRIPT);
+      }
+    }
     setIsRecording(false);
     setRecorded(true);
   };
@@ -28,6 +116,35 @@ export default function VoiceOnboardingPage() {
   const handleReset = () => {
     setIsRecording(false);
     setRecorded(false);
+    setTranscript('');
+    setError('');
+  };
+
+  /* ---------- Analyze with AI ---------- */
+
+  const handleAnalyze = async () => {
+    const textToAnalyze = transcript || DEMO_TRANSCRIPT;
+
+    if (accessToken) {
+      try {
+        setBusy(true);
+        setError('');
+        const result = await api('/ai/parse-voice-profile', {
+          method: 'POST',
+          body: { transcript: textToAnalyze },
+          token: accessToken,
+        });
+        navigate('/skill-id', { state: { voiceProfile: result, transcript: textToAnalyze } });
+      } catch (requestError) {
+        // Fallback: navigate with demo transcript for offline parsing
+        navigate('/skill-id', { state: { transcript: textToAnalyze } });
+      } finally {
+        setBusy(false);
+      }
+    } else {
+      // Demo mode — navigate with transcript only
+      navigate('/skill-id', { state: { transcript: textToAnalyze } });
+    }
   };
 
   return (
@@ -73,6 +190,7 @@ export default function VoiceOnboardingPage() {
             )}
             <button
               onClick={isRecording ? handleStopRecording : handleStartRecording}
+              disabled={busy}
               className={`relative z-10 w-28 h-28 md:w-32 md:h-32 rounded-full flex items-center justify-center text-white shadow-2xl transition-transform active:scale-95 ${
                 isRecording
                   ? 'bg-red-500 shadow-red-300'
@@ -89,7 +207,9 @@ export default function VoiceOnboardingPage() {
 
           {/* Prompt text */}
           <p className="text-sm font-semibold text-gray-700 mt-6 max-w-sm">
-            {isRecording
+            {busy
+              ? 'Processing your recording...'
+              : isRecording
               ? 'Listening to your story... speak naturally'
               : recorded
               ? 'Voice recording captured successfully!'
@@ -126,7 +246,7 @@ export default function VoiceOnboardingPage() {
             <div className="mt-4 p-4 bg-emerald-50 rounded-2xl text-left max-w-md border border-emerald-200 fade-in">
               <span className="text-[11px] font-bold text-emerald-700 block mb-1">Captured Audio Transcript:</span>
               <p className="text-xs text-gray-700 font-medium">
-                "I have been cooking traditional Tamil food for 20 years and teaching maths to school children in Chennai..."
+                "{transcript || DEMO_TRANSCRIPT}"
               </p>
             </div>
           )}
@@ -144,16 +264,19 @@ export default function VoiceOnboardingPage() {
           )}
 
           <button
-            onClick={() => navigate('/skill-id')}
+            onClick={handleAnalyze}
+            disabled={busy}
             className={`w-full sm:w-auto px-8 py-3.5 rounded-2xl font-bold text-sm text-white shadow-lg transition-all flex items-center justify-center gap-2 ${
               recorded
                 ? 'gradient-bg shadow-primary-300'
                 : 'bg-gray-300 cursor-not-allowed'
             }`}
           >
-            Analyze Skills with AI <ArrowRight className="w-4 h-4" />
+            {busy ? 'Analyzing...' : 'Analyze Skills with AI'} <ArrowRight className="w-4 h-4" />
           </button>
         </div>
+
+        {error && <p className="text-sm text-red-600 mt-3">{error}</p>}
 
         <p className="text-[11px] text-gray-400 mt-6">
           ✨ You don't need to type! Our AI handles transcription and skill identification.
