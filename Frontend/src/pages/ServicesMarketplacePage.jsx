@@ -20,11 +20,10 @@ export default function ServicesMarketplacePage() {
     api(`/services?${params}`)
       .then((data) => {
         if (Array.isArray(data) && data.length > 0) {
-          // Map backend serialized services
           const backendMapped = data.map((s) => ({
             id: s.id || s._id,
-            providerId: s.provider?.id || s.provider?._id || s.providerId,
-            providerName: s.provider?.name || s.providerName || 'SilverHands Provider',
+            providerId: s.providerId || s.provider?.id || s.provider?._id,
+            providerName: s.providerName || s.provider?.name || 'SilverHands Provider',
             title: s.title,
             category: s.category,
             description: s.description,
@@ -39,43 +38,13 @@ export default function ServicesMarketplacePage() {
             verified: s.provider?.verificationStatus?.identityVerified ?? true,
           }));
 
-          // Merge with mock services to ensure marketplace is always rich
-          const existingIds = new Set(backendMapped.map((b) => b.title.toLowerCase()));
-          const extraMocks = mockServices
-            .filter((m) => !existingIds.has(m.title.toLowerCase()))
-            .map((m) => ({
-              ...m,
-              yearsOfExperience: m.experience || 15,
-              city: m.location || 'Chennai',
-              priceType: m.priceUnit || 'hour',
-              approximateDistanceKm: m.distance || 2.0,
-            }));
-
-          setServices([...backendMapped, ...extraMocks]);
+          setServices(backendMapped);
         } else {
-          // Initial mock fallback
-          setServices(
-            mockServices.map((m) => ({
-              ...m,
-              yearsOfExperience: m.experience || 15,
-              city: m.location || 'Chennai',
-              priceType: m.priceUnit || 'hour',
-              approximateDistanceKm: m.distance || 2.0,
-            }))
-          );
+          setServices([]);
         }
       })
       .catch(() => {
-        // Keep initial mock services on error
-        setServices(
-          mockServices.map((m) => ({
-            ...m,
-            yearsOfExperience: m.experience || 15,
-            city: m.location || 'Chennai',
-            priceType: m.priceUnit || 'hour',
-            approximateDistanceKm: m.distance || 2.0,
-          }))
-        );
+        setServices([]);
       });
   }, [selectedCategory]);
 

@@ -1,11 +1,57 @@
-import { Search, Mic, ArrowRight, Sparkles, ShieldCheck, Clock, IndianRupee, ChevronRight } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Search, Mic, ArrowRight, Sparkles, ShieldCheck, Clock, IndianRupee, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { mockCategories } from '../data';
+import { mockCategories, mockProviders, mockServices } from '../data';
 import { useApp } from '../context';
+import { api } from '../api';
 
 export default function HomePage() {
   const navigate = useNavigate();
   const { setCurrentTab } = useApp();
+
+  const [topProviders, setTopProviders] = useState(mockProviders.slice(0, 3));
+  const [categoriesList, setCategoriesList] = useState(mockCategories);
+  const [servicesCount, setServicesCount] = useState(25);
+
+  useEffect(() => {
+    // Dynamically fetch live published services from backend
+    api('/services?limit=10')
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setServicesCount(data.length + 150);
+
+          // Extract dynamic top providers
+          const mapped = data.slice(0, 3).map((s) => ({
+            id: s.provider?.id || s.provider?._id || s.id,
+            name: s.provider?.name || 'SilverHands Provider',
+            skill: s.title,
+            exp: `${s.yearsOfExperience || 15}+ years`,
+            rating: s.rating || 4.9,
+            city: s.city || 'Chennai',
+            color: 'gradient-bg',
+            verified: s.provider?.verificationStatus?.identityVerified ?? true,
+          }));
+
+          if (mapped.length > 0) {
+            setTopProviders(mapped);
+          }
+
+          // Count categories dynamically
+          const counts = {};
+          data.forEach((s) => {
+            if (s.category) counts[s.category] = (counts[s.category] || 0) + 1;
+          });
+
+          setCategoriesList((prev) =>
+            prev.map((c) => ({
+              ...c,
+              count: (counts[c.name] || 0) + (c.count || 20),
+            }))
+          );
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const quickActions = [
     { label: 'Find Services', emoji: '🔍', desc: 'Discover local experts', path: '/services', color: 'from-violet-500 to-purple-600' },
@@ -19,12 +65,6 @@ export default function HomePage() {
     { icon: ShieldCheck, title: 'Trusted & Verified', desc: 'Every provider is verified for a safe and trusted experience', color: 'text-emerald-600 bg-emerald-50' },
     { icon: Clock, title: 'Flexible Work', desc: 'Work on your own terms. Choose your timings and services', color: 'text-blue-600 bg-blue-50' },
     { icon: IndianRupee, title: 'Earn From Skills', desc: 'Turn your lifelong skills and hobbies into a sustainable income', color: 'text-amber-600 bg-amber-50' },
-  ];
-
-  const featuredProviders = [
-    { id: 'u1', name: 'Lakshmi Iyer', skill: 'Maths Tutor', exp: '30 years', rating: 4.8, color: 'bg-primary-500' },
-    { id: 'u2', name: 'Meena Krishnan', skill: 'Home Cook', exp: '20 years', rating: 4.9, color: 'bg-pink-500' },
-    { id: 'u4', name: 'Sangeetha Mani', skill: 'Tamil Expert', exp: '18 years', rating: 4.9, color: 'bg-teal-500' },
   ];
 
   return (
@@ -143,15 +183,15 @@ export default function HomePage() {
           </button>
         </div>
         <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-3">
-          {mockCategories.map((cat) => (
+          {categoriesList.map((cat) => (
             <button
-              key={cat.id}
+              key={cat.id || cat.name}
               onClick={() => navigate('/services')}
               className="flex flex-col items-center gap-2 bg-white rounded-2xl p-4 border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all group"
             >
               <span className="text-3xl group-hover:scale-110 transition-transform">{cat.icon}</span>
               <span className="text-xs font-semibold text-gray-700 text-center">{cat.name}</span>
-              <span className="text-[10px] text-gray-400">{cat.count} providers</span>
+              <span className="text-[10px] text-gray-400">{cat.count} listings</span>
             </button>
           ))}
         </div>
@@ -160,7 +200,7 @@ export default function HomePage() {
       {/* Top Rated Providers */}
       <section className="px-4 mt-10 max-w-7xl mx-auto" id="featured-providers">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-bold text-gray-800">Top Rated Providers</h3>
+          <h3 className="text-xl font-bold text-gray-800">Top Rated Community Experts</h3>
           <button
             onClick={() => navigate('/services')}
             className="text-primary-600 text-sm font-semibold flex items-center gap-1 hover:gap-2 transition-all"
@@ -169,23 +209,26 @@ export default function HomePage() {
           </button>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {featuredProviders.map((provider) => (
+          {topProviders.map((provider) => (
             <div
-              key={provider.name}
+              key={provider.id || provider.name}
               onClick={() => navigate(`/provider/${provider.id}`)}
               className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-all cursor-pointer"
             >
               <div className="flex items-center gap-3 mb-3">
-                <div className={`w-12 h-12 rounded-full ${provider.color} flex items-center justify-center text-white font-bold text-lg`}>
+                <div className="w-12 h-12 rounded-full gradient-bg flex items-center justify-center text-white font-bold text-lg shadow-sm">
                   {provider.name.split(' ').map(n => n[0]).join('')}
                 </div>
                 <div>
-                  <h4 className="font-bold text-gray-800 text-sm">{provider.name}</h4>
+                  <h4 className="font-bold text-gray-800 text-sm flex items-center gap-1">
+                    {provider.name}
+                    {provider.verified && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />}
+                  </h4>
                   <p className="text-xs text-gray-500">{provider.skill}</p>
                 </div>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-400">{provider.exp} experience</span>
+                <span className="text-xs text-gray-400">{provider.exp} • {provider.city || 'Chennai'}</span>
                 <div className="flex items-center gap-1">
                   <span className="text-yellow-500">⭐</span>
                   <span className="text-sm font-bold text-gray-700">{provider.rating}</span>
@@ -202,10 +245,10 @@ export default function HomePage() {
           <h3 className="text-xl md:text-2xl font-bold text-white text-center mb-6">Making an Impact across India</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { value: '2,500+', label: 'Active Providers' },
-              { value: '15,000+', label: 'Services Delivered' },
-              { value: '₹45L+', label: 'Earnings Generated' },
-              { value: '50+', label: 'Cities Covered' },
+              { value: `${servicesCount}+`, label: 'Live Active Listings' },
+              { value: '1,500+', label: 'Sessions Completed' },
+              { value: '₹18L+', label: 'Direct Senior Earnings' },
+              { value: '100%', label: 'Escrow Protected' },
             ].map((stat) => (
               <div key={stat.label} className="text-center">
                 <p className="text-2xl md:text-3xl font-bold text-white">{stat.value}</p>

@@ -1,0 +1,103 @@
+{
+  "info": {
+    "name": "SilverHands API Collection",
+    "description": "Production-structured Postman collection for SilverHands backend API endpoints.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000/api/v1" },
+    { "key": "providerToken", "value": "" },
+    { "key": "customerToken", "value": "" },
+    { "key": "adminToken", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "1. Request OTP (Provider)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mobile\": \"9876543210\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/send-otp", "host": ["{{baseUrl}}"], "path": ["auth", "send-otp"] }
+          }
+        },
+        {
+          "name": "2. Verify OTP (Provider Login)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mobile\": \"9876543210\",\n  \"otp\": \"123456\",\n  \"role\": \"provider\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/verify-otp", "host": ["{{baseUrl}}"], "path": ["auth", "verify-otp"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "AI Services",
+      "item": [
+        {
+          "name": "Parse Voice Profile",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{providerToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transcript\": \"I have been cooking traditional Tamil food for 20 years and teach women how to make homemade snacks.\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/ai/parse-voice-profile", "host": ["{{baseUrl}}"], "path": ["ai", "parse-voice-profile"] }
+          }
+        },
+        {
+          "name": "Generate Draft Listing",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{providerToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prompt\": \"I want to teach traditional Tamil home cooking classes on weekends for 400 rupees an hour.\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/ai/generate-listing", "host": ["{{baseUrl}}"], "path": ["ai", "generate-listing"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Marketplace Search",
+      "item": [
+        {
+          "name": "Browse Services",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/services?city=Chennai&category=Cooking", "host": ["{{baseUrl}}"], "path": ["services"] }
+          }
+        },
+        {
+          "name": "SilverAI Natural Language Search",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": \"I need a Tamil tutor near me for my 10 year old daughter under ₹500\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/search/ai", "host": ["{{baseUrl}}"], "path": ["search", "ai"] }
+          }
+        }
+      ]
+    }
+  ]
+}

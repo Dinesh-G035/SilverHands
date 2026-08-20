@@ -3,6 +3,7 @@
 export const mockUser = {
   id: 'u1',
   name: 'Lakshmi Iyer',
+  role: 'provider',
   type: 'senior',
   phone: '+91 98765 43210',
   location: 'Chennai',
@@ -22,10 +23,31 @@ export const mockUser = {
   joinedDate: '2024-01-15',
 };
 
+export const mockAdmin = {
+  id: 'adm1',
+  name: 'Rajesh Kumar (Admin)',
+  role: 'admin',
+  type: 'admin',
+  phone: '+91 99999 88888',
+  location: 'Chennai HQ',
+  languages: ['English', 'Tamil', 'Hindi'],
+  avatar: '',
+  bio: 'Platform Administrator & Trust & Safety Lead for SilverHands platform.',
+  skills: [
+    { id: 'sa1', name: 'Platform Operations', icon: '🛡️', confidence: 100, verified: true },
+    { id: 'sa2', name: 'Community Verification', icon: '✅', confidence: 100, verified: true },
+  ],
+  experience: 'Admin',
+  rating: 5.0,
+  reviewCount: 0,
+  verified: true,
+  joinedDate: '2023-11-01',
+};
+
 export const mockProviders = [
   mockUser,
   {
-    id: 'u2', name: 'Meena Krishnan', type: 'homemaker', phone: '+91 98765 43211',
+    id: 'u2', name: 'Meena Krishnan', role: 'provider', type: 'homemaker', phone: '+91 98765 43211',
     location: 'Chennai', languages: ['Tamil', 'English'], avatar: '',
     bio: 'Home cook specializing in traditional South Indian cuisine. Known for authentic chettinad flavors and homemade pickles.',
     skills: [
@@ -36,7 +58,7 @@ export const mockProviders = [
     experience: '20+ years', rating: 4.9, reviewCount: 48, verified: true, joinedDate: '2024-02-20',
   },
   {
-    id: 'u3', name: 'Radha Devi', type: 'homemaker', phone: '+91 98765 43212',
+    id: 'u3', name: 'Radha Devi', role: 'provider', type: 'homemaker', phone: '+91 98765 43212',
     location: 'Coimbatore', languages: ['Tamil', 'English'], avatar: '',
     bio: 'Expert tailor specializing in traditional blouse designs, alterations, and embroidery work.',
     skills: [
@@ -47,7 +69,7 @@ export const mockProviders = [
     experience: '23+ years', rating: 4.7, reviewCount: 56, verified: true, joinedDate: '2024-01-08',
   },
   {
-    id: 'u4', name: 'Sangeetha Mani', type: 'senior', phone: '+91 98765 43213',
+    id: 'u4', name: 'Sangeetha Mani', role: 'provider', type: 'senior', phone: '+91 98765 43213',
     location: 'Bengaluru', languages: ['Tamil', 'Kannada', 'English'], avatar: '',
     bio: 'Tamil language expert and literature enthusiast. Teaches Tamil reading, writing, and appreciation of classical Tamil literature.',
     skills: [
@@ -57,7 +79,7 @@ export const mockProviders = [
     experience: '18+ years', rating: 4.9, reviewCount: 41, verified: true, joinedDate: '2024-03-12',
   },
   {
-    id: 'u5', name: 'Kamala Sundaram', type: 'senior', phone: '+91 98765 43214',
+    id: 'u5', name: 'Kamala Sundaram', role: 'provider', type: 'senior', phone: '+91 98765 43214',
     location: 'Madurai', languages: ['Tamil', 'English'], avatar: '',
     bio: 'Classical Carnatic music teacher with decades of performing and teaching experience.',
     skills: [
@@ -67,7 +89,7 @@ export const mockProviders = [
     experience: '25+ years', rating: 4.8, reviewCount: 37, verified: true, joinedDate: '2024-04-05',
   },
   {
-    id: 'u6', name: 'Padma Rao', type: 'homemaker', phone: '+91 98765 43215',
+    id: 'u6', name: 'Padma Rao', role: 'provider', type: 'homemaker', phone: '+91 98765 43215',
     location: 'Hyderabad', languages: ['Telugu', 'Hindi', 'English'], avatar: '',
     bio: 'Expert in Pochampally ikat weaving and traditional Telangana embroidery. Preserving traditional textile arts.',
     skills: [
@@ -77,7 +99,7 @@ export const mockProviders = [
     experience: '20+ years', rating: 4.6, reviewCount: 29, verified: true, joinedDate: '2024-02-28',
   },
   {
-    id: 'u7', name: 'Savitri Nair', type: 'homemaker', phone: '+91 98765 43216',
+    id: 'u7', name: 'Savitri Nair', role: 'provider', type: 'homemaker', phone: '+91 98765 43216',
     location: 'Kochi', languages: ['Malayalam', 'English'], avatar: '',
     bio: 'Passionate gardener specializing in organic kitchen gardens, medicinal herbs, and traditional Ayurvedic plant knowledge.',
     skills: [
@@ -87,7 +109,7 @@ export const mockProviders = [
     experience: '15+ years', rating: 4.7, reviewCount: 22, verified: true, joinedDate: '2024-05-10',
   },
   {
-    id: 'u8', name: 'Aruna Sharma', type: 'senior', phone: '+91 98765 43217',
+    id: 'u8', name: 'Aruna Sharma', role: 'provider', type: 'senior', phone: '+91 98765 43217',
     location: 'Delhi', languages: ['Hindi', 'English'], avatar: '',
     bio: 'Retired management consultant offering business mentoring and career guidance to young professionals.',
     skills: [
@@ -213,5 +235,5 @@ export const getAvatarColor = (name) => {
 };
 
 export const getInitials = (name) => {
-  return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  return (name || 'User').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 };

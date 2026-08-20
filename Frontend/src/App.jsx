@@ -17,6 +17,7 @@ import DashboardPage from './pages/DashboardPage';
 import ProviderProfilePage from './pages/ProviderProfilePage';
 import AddChoicePage from './pages/AddChoicePage';
 import MessagesPage from './pages/MessagesPage';
+import AdminPage from './pages/AdminPage';
 
 export default function App() {
   return (
@@ -39,6 +40,7 @@ export default function App() {
               <Route path="/provider/:id" element={<ProviderProfilePage />} />
               <Route path="/add" element={<AddChoicePage />} />
               <Route path="/messages" element={<MessagesPage />} />
+              <Route path="/admin" element={<AdminPage />} />
             </Routes>
           </main>
           <AIAssistant />
