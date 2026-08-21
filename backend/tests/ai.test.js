@@ -7,11 +7,11 @@ let token;
 beforeAll(async () => {
   process.env.USE_IN_MEMORY_DB = 'true';
   await connectDB();
-  await request(app).post('/api/v1/auth/send-otp').send({ mobile: '9876543210' });
+  await request(app).post('/api/v1/auth/send-otp').send({ email: 'provider.ai@example.com' });
 
   const res = await request(app)
     .post('/api/v1/auth/verify-otp')
-    .send({ mobile: '9876543210', otp: '123456', role: 'provider' });
+    .send({ email: 'provider.ai@example.com', mobile: '9876543210', otp: '123456', role: 'provider' });
 
   token = res.body.data.accessToken;
 });

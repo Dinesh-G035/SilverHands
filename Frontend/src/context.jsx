@@ -1,5 +1,4 @@
 import { createContext, useContext, useState } from 'react';
-import { api } from './api';
 
 const AppContext = createContext(undefined);
 
@@ -11,7 +10,6 @@ export function AppProvider({ children }) {
   const [seniorMode, setSeniorMode] = useState(false);
   const [language, setLanguage] = useState('English');
   const [currentTab, setCurrentTab] = useState('home');
-  const [demoStep, setDemoStep] = useState(0);
 
   const isAdmin = currentUser?.role === 'admin';
   const userRole = isAdmin ? 'admin' : 'user';
@@ -28,48 +26,9 @@ export function AppProvider({ children }) {
     setIsLoggedIn(true);
   };
 
-  const loginDemo = async (role = 'user') => {
-    const mobile = role === 'admin' ? '9999988888' : '9876543210';
-    try {
-      // 1. Request OTP via real API
-      await api('/auth/send-otp', { method: 'POST', body: { mobile } }).catch(() => {});
-
-      // 2. Verify OTP via real API to retrieve real MongoDB user & authentic JWT token
-      const session = await api('/auth/verify-otp', {
-        method: 'POST',
-        body: {
-          mobile,
-          otp: '123456',
-          role: role === 'admin' ? 'admin' : 'provider',
-          name: role === 'admin' ? 'Rajesh Kumar (Admin)' : 'Lakshmi Ammal',
-        },
-      });
-
-      login(session);
-      return session;
-    } catch (err) {
-      // Fallback in case of server offline
-      const fallbackUser = {
-        id: role === 'admin' ? 'adm1' : 'u1',
-        name: role === 'admin' ? 'Rajesh Kumar (Admin)' : 'Lakshmi Ammal',
-        role: role === 'admin' ? 'admin' : 'provider',
-        mobile,
-        city: 'Chennai',
-        verificationStatus: { mobileVerified: true, identityVerified: true, experienceVerified: true },
-      };
-      login({ user: fallbackUser, accessToken: 'token_' + Date.now() });
-      return { user: fallbackUser };
-    }
-  };
-
-  const switchRole = async (newRole) => {
-    return loginDemo(newRole);
-  };
-
   const logout = () => {
     setCurrentUser(null);
     setIsLoggedIn(false);
-    setDemoStep(0);
     setAccessToken(null);
     localStorage.removeItem('silverhands_session');
   };
@@ -93,16 +52,12 @@ export function AppProvider({ children }) {
         seniorMode,
         language,
         currentTab,
-        demoStep,
         accessToken,
         setCurrentUser,
         setIsLoggedIn,
         setLanguage,
         setSeniorMode: handleSeniorMode,
         setCurrentTab,
-        setDemoStep,
-        loginDemo,
-        switchRole,
         login,
         logout,
       }}

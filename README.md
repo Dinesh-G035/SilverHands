@@ -1,16 +1,42 @@
-# React + Vite
+# SilverHands
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+SilverHands is an AI-assisted livelihood platform for connecting senior citizens and homemakers with customers through services, products, bookings, messaging, and payments.
 
-Currently, two official plugins are available:
+## Project Structure
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- `backend/` - Express, MongoDB, authentication, OTP, marketplace, booking, and payment APIs
+- `frontend/` - React and Vite web application
+- `docs/` - API collection and integration documentation
 
-## React Compiler
+## Run Locally
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Install dependencies in each application directory:
 
-## Expanding the Oxlint configuration
+```powershell
+cd backend
+npm install
+npm run dev
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+In a second terminal:
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+The backend runs on `http://localhost:5000` and the frontend runs on `http://localhost:5173`.
+
+## Configuration
+
+Configure MongoDB, JWT secrets, and OTP delivery in `backend/.env`. Use `OTP_PROVIDER=mock` for local development, or configure SMTP values for email OTP delivery.
+
+Never commit `.env` files or real credentials. Rotate any credential exposed outside the local machine.
+
+## Tests
+
+```powershell
+cd backend
+npm test
+```

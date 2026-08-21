@@ -1,18 +1,14 @@
 import { useState, useEffect } from 'react';
 import { MessageCircle, Send, CheckCheck } from 'lucide-react';
-import { mockMessages } from '../data';
 import { api } from '../api';
 import { useApp } from '../context';
 
 export default function MessagesPage() {
   const { accessToken, currentUser } = useApp();
 
-  const [conversations, setConversations] = useState(mockMessages);
-  const [activeChat, setActiveChat] = useState(mockMessages[0]);
-  const [chatMessages, setChatMessages] = useState([
-    { sender: 'customer', text: 'Hi Lakshmi ji, I would like to book a maths tuition session for my daughter.', time: '10:30 AM' },
-    { sender: 'me', text: 'Hello Priya! I would be glad to help. Saturday morning at 10 AM works well for me.', time: '10:32 AM' },
-  ]);
+  const [conversations, setConversations] = useState([]);
+  const [activeChat, setActiveChat] = useState(null);
+  const [chatMessages, setChatMessages] = useState([]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -41,9 +37,7 @@ export default function MessagesPage() {
             setActiveChat(mapped[0]);
           }
         })
-        .catch(() => {
-          // Keep mock conversations
-        });
+        .catch(() => setConversations([]));
     }
   }, [accessToken]);
 
@@ -71,7 +65,7 @@ export default function MessagesPage() {
 
   const handleSend = async (e) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || !activeChat?.otherUserId || !accessToken) return;
 
     const currentText = input.trim();
     const newLocalMsg = {
@@ -80,25 +74,22 @@ export default function MessagesPage() {
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
-    setChatMessages((prev) => [...prev, newLocalMsg]);
-    setInput('');
-
-    if (accessToken && activeChat?.otherUserId) {
-      try {
-        setBusy(true);
-        await api('/messages/send', {
-          method: 'POST',
-          body: {
-            receiverId: activeChat.otherUserId,
-            text: currentText,
-          },
-          token: accessToken,
-        });
-      } catch (err) {
-        // Message already appended locally
-      } finally {
-        setBusy(false);
-      }
+    try {
+      setBusy(true);
+      await api('/messages/send', {
+        method: 'POST',
+        body: {
+          receiverId: activeChat.otherUserId,
+          text: currentText,
+        },
+        token: accessToken,
+      });
+      setChatMessages((prev) => [...prev, newLocalMsg]);
+      setInput('');
+    } catch (err) {
+      setBusy(false);
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -106,7 +97,7 @@ export default function MessagesPage() {
     <div className="max-w-5xl mx-auto px-4 py-6 safe-bottom">
       <h2 className="text-2xl font-extrabold text-gray-800 mb-4">Messages</h2>
 
-      <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden grid grid-cols-1 md:grid-cols-3 h-[600px]">
+      <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden grid grid-cols-1 md:grid-cols-3 h-150">
         {/* Chat List */}
         <div className="border-r border-gray-100 overflow-y-auto">
           {conversations.map((msg) => (
@@ -172,7 +163,7 @@ export default function MessagesPage() {
               placeholder="Type your message..."
               className="flex-1 bg-gray-50 px-4 py-2.5 rounded-xl text-xs font-medium outline-none text-gray-700"
             />
-            <button type="submit" disabled={busy || !input.trim()} className="p-2.5 gradient-bg text-white rounded-xl shadow-sm disabled:opacity-50">
+            <button type="submit" disabled={busy || !input.trim() || !activeChat?.otherUserId} className="p-2.5 gradient-bg text-white rounded-xl shadow-sm disabled:opacity-50">
               <Send className="w-4 h-4" />
             </button>
           </form>

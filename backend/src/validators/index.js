@@ -1,18 +1,26 @@
 import { z } from 'zod';
 
 export const sendOtpSchema = z.object({
-  mobile: z.string().regex(/^[6-9]\d{9}$/, 'Please enter a valid 10-digit Indian mobile number'),
+  email: z.string().email('Please enter a valid email address'),
+  purpose: z.enum(['login', 'signup']).optional(),
 });
 
 export const verifyOtpSchema = z.object({
-  mobile: z.string().regex(/^[6-9]\d{9}$/, 'Please enter a valid 10-digit Indian mobile number'),
+  email: z.string().email('Please enter a valid email address'),
   otp: z.string().length(6, 'OTP must be 6 digits'),
   role: z.enum(['provider', 'customer', 'admin']).optional(),
   name: z.string().optional(),
+  mobile: z.string().regex(/^[6-9]\d{9}$/, 'Please enter a valid 10-digit Indian mobile number').optional(),
 });
 
 export const refreshTokenSchema = z.object({
   refreshToken: z.string().min(1, 'Refresh token is required'),
+});
+
+export const adminLoginSchema = z.object({
+  email: z.string().email('Please enter a valid email address'),
+  password: z.string().min(1, 'Admin password is required'),
+  otp: z.string().length(6, 'OTP must be 6 digits').optional(),
 });
 
 export const updateProfileSchema = z.object({

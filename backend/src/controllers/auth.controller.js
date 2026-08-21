@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env.js';
 import { User } from '../models/User.js';
@@ -29,16 +30,19 @@ function generateTokens(userId, role) {
 }
 
 /**
- * Request an OTP for a mobile number.
- * @param {import('express').Request} req Express request containing `body.mobile`.
+ * Request an OTP for an email address.
+ * @param {import('express').Request} req Express request containing `body.email`.
  * @param {import('express').Response} res Express response.
  * @param {import('express').NextFunction} next Express error callback.
  * @returns {Promise<import('express').Response|void>}
  */
 export const requestOTP = async (req, res, next) => {
   try {
-    const { mobile } = req.body;
-    const result = await OTPService.sendOTP(mobile);
+    const { email, purpose = 'login' } = req.body;
+    if (purpose === 'signup' && await User.exists({ email: email.trim().toLowerCase() })) {
+      throw new AppError('Duplicate value entered for email. Please use another value.', 400);
+    }
+    const result = await OTPService.sendOTP(email);
     return sendSuccess(res, result, 'OTP sent successfully');
   } catch (error) {
     next(error);
@@ -47,26 +51,41 @@ export const requestOTP = async (req, res, next) => {
 
 export const verifyOTP = async (req, res, next) => {
   try {
-    const { mobile, otp, role, name } = req.body;
+    const { email, mobile, otp, role, name } = req.body;
 
-    await OTPService.verifyOTP(mobile, otp);
+    if (role === 'admin') {
+      throw new AppError('Administrators must use email and password login.', 400);
+    }
 
-    let user = await User.findOne({ mobile });
+    await OTPService.verifyOTP(email, otp);
+
+    if (mobile && await User.exists({ mobile })) {
+      const emailUser = await User.findOne({ email: email.trim().toLowerCase() }).select('_id');
+      const mobileUser = await User.findOne({ mobile }).select('_id');
+      if (!emailUser || !mobileUser._id.equals(emailUser._id)) {
+        throw new AppError('Duplicate value entered for mobile. Please use another value.', 400);
+      }
+    }
+
+    let user = await User.findOne({ email: email.trim().toLowerCase() });
 
     if (!user) {
       user = await User.create({
-        mobile,
-        name: name || `User ${mobile.slice(-4)}`,
+        email: email.trim().toLowerCase(),
+        mobile: mobile || '',
+        name: name || `User ${email.split('@')[0]}`,
         role: role || 'customer',
         verificationStatus: {
-          mobileVerified: true,
+          emailVerified: true,
+          mobileVerified: false,
           identityVerified: false,
           experienceVerified: false,
         },
       });
     } else {
-      if (!user.verificationStatus.mobileVerified) {
-        user.verificationStatus.mobileVerified = true;
+      if (!user.verificationStatus.emailVerified) {
+        user.verificationStatus.emailVerified = true;
+        if (mobile && !user.mobile) user.mobile = mobile;
         await user.save();
       }
     }
@@ -95,6 +114,36 @@ export const verifyOTP = async (req, res, next) => {
       },
       'Authentication successful'
     );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const adminLogin = async (req, res, next) => {
+  try {
+    const { email, password, otp } = req.body;
+    const user = await User.findOne({ email: email.trim().toLowerCase(), role: 'admin' }).select('+passwordHash');
+
+    if (!user || !user.passwordHash || !(await bcrypt.compare(password, user.passwordHash))) {
+      throw new AppError('Invalid admin email or password.', 401);
+    }
+
+    if (otp) await OTPService.verifyOTP(email, otp);
+
+    const { accessToken, refreshToken, refreshTokenHash } = generateTokens(user._id.toString(), user.role);
+    await Session.create({
+      user: user._id,
+      refreshTokenHash,
+      deviceInfo: req.headers['user-agent'] || 'Unknown Device',
+      ipAddress: req.ip || '',
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    });
+
+    return sendSuccess(res, {
+      user: serializeUserPublic(user),
+      accessToken,
+      refreshToken,
+    }, 'Admin authentication successful');
   } catch (error) {
     next(error);
   }

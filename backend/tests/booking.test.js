@@ -11,23 +11,23 @@ let serviceId;
 beforeAll(async () => {
   process.env.USE_IN_MEMORY_DB = 'true';
   await connectDB();
-  await request(app).post('/api/v1/auth/send-otp').send({ mobile: '9876543210' });
+  await request(app).post('/api/v1/auth/send-otp').send({ email: 'provider.booking@example.com' });
 
   // Create Provider
   const pRes = await request(app)
     .post('/api/v1/auth/verify-otp')
-    .send({ mobile: '9876543210', otp: '123456', role: 'provider' });
+    .send({ email: 'provider.booking@example.com', mobile: '9876543210', otp: '123456', role: 'provider' });
   providerToken = pRes.body.data.accessToken;
 
-  await request(app).post('/api/v1/auth/send-otp').send({ mobile: '9123456789' });
+  await request(app).post('/api/v1/auth/send-otp').send({ email: 'customer.booking@example.com' });
 
   // Create Customer
   const cRes = await request(app)
     .post('/api/v1/auth/verify-otp')
-    .send({ mobile: '9123456789', otp: '123456', role: 'customer' });
+    .send({ email: 'customer.booking@example.com', mobile: '9123456789', otp: '123456', role: 'customer' });
   customerToken = cRes.body.data.accessToken;
 
-  const providerDoc = await User.findOne({ mobile: '9876543210' });
+  const providerDoc = await User.findOne({ email: 'provider.booking@example.com' });
 
   // Create Service
   const service = await Service.create({

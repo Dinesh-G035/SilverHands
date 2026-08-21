@@ -17,79 +17,25 @@ import {
   Check,
   X,
   Lock,
-  RefreshCw,
 } from 'lucide-react';
 import { useApp } from '../context';
 import { api } from '../api';
-import { mockProviders, mockServices, mockProducts } from '../data';
 
 export default function AdminPage() {
-  const { isAdmin, currentUser, switchRole, accessToken } = useApp();
+  const { isAdmin, currentUser, accessToken } = useApp();
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState('users'); // 'users' | 'moderation' | 'reports' | 'stats'
   const [usersList, setUsersList] = useState([]);
   const [servicesList, setServicesList] = useState([]);
   const [productsList, setProductsList] = useState([]);
-  const [reportsList, setReportsList] = useState([
-    {
-      id: 'rep_1',
-      reporterName: 'Priya Ramesh',
-      targetType: 'service',
-      targetTitle: 'Maths Tuition Session',
-      reason: 'Schedule Reschedule Request',
-      description: 'Provider was unable to connect at the exact time slot; requesting schedule adjustment.',
-      status: 'pending',
-      date: '2 hours ago',
-    },
-    {
-      id: 'rep_2',
-      reporterName: 'Karthik Venkat',
-      targetType: 'product',
-      targetTitle: 'Traditional Mango Pickle',
-      reason: 'Delivery Delay Inquiry',
-      description: 'Customer inquired about estimated delivery date for local courier.',
-      status: 'resolved',
-      date: '1 day ago',
-    },
-  ]);
+  const [reportsList, setReportsList] = useState([]);
   const [busy, setBusy] = useState(false);
   const [actionNotice, setActionNotice] = useState('');
   const [userSearchQuery, setUserSearchQuery] = useState('');
 
   // Initial load
   useEffect(() => {
-    // 1. Initial mock users & services
-    const initialUsers = mockProviders.map((p, i) => ({
-      id: p.id,
-      name: p.name,
-      mobile: p.phone || '+91 98765 43210',
-      role: p.role || 'provider',
-      city: p.location || 'Chennai',
-      verificationStatus: {
-        mobileVerified: true,
-        identityVerified: i % 2 === 0,
-        experienceVerified: true,
-      },
-      createdAt: p.joinedDate || '2024-01-15',
-    }));
-    setUsersList(initialUsers);
-
-    setServicesList(
-      mockServices.map((s, idx) => ({
-        ...s,
-        moderationStatus: idx === 0 ? 'approved' : idx === 1 ? 'pending' : 'approved',
-      }))
-    );
-
-    setProductsList(
-      mockProducts.map((p, idx) => ({
-        ...p,
-        moderationStatus: 'approved',
-      }))
-    );
-
-    // 2. Fetch real data from backend if accessToken is present
     if (accessToken && isAdmin) {
       api('/admin/users', { token: accessToken })
         .then((data) => {
@@ -234,12 +180,6 @@ export default function AdminPage() {
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <button
-              onClick={() => switchRole('admin')}
-              className="w-full sm:w-auto px-6 py-3 gradient-bg text-white font-bold rounded-2xl text-xs shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2"
-            >
-              <ShieldCheck className="w-4 h-4" /> Switch to Administrator Role
-            </button>
-            <button
               onClick={() => navigate('/')}
               className="w-full sm:w-auto px-6 py-3 bg-gray-100 text-gray-700 font-bold rounded-2xl text-xs hover:bg-gray-200 transition-colors"
             >
@@ -280,13 +220,6 @@ export default function AdminPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => switchRole('user')}
-            className="px-4 py-2.5 bg-gray-100 text-gray-700 font-bold rounded-2xl text-xs hover:bg-gray-200 transition-colors flex items-center gap-1.5"
-            title="Preview as regular user"
-          >
-            <RefreshCw className="w-3.5 h-3.5" /> Switch to User Role
-          </button>
         </div>
       </div>
 

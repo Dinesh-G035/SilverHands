@@ -10,14 +10,15 @@ let productId;
 beforeAll(async () => {
   process.env.USE_IN_MEMORY_DB = 'true';
   await connectDB();
-  await request(app).post('/api/v1/auth/send-otp').send({ mobile: '9123456789' });
+  await request(app).post('/api/v1/auth/send-otp').send({ email: 'customer.stock@example.com' });
 
   const cRes = await request(app)
     .post('/api/v1/auth/verify-otp')
-    .send({ mobile: '9123456789', otp: '123456', role: 'customer' });
+    .send({ email: 'customer.stock@example.com', mobile: '9123456789', otp: '123456', role: 'customer' });
   customerToken = cRes.body.data.accessToken;
 
   const seller = await User.create({
+    email: 'seller.stock@example.com',
     mobile: '9876543210',
     name: 'Seller',
     role: 'provider',

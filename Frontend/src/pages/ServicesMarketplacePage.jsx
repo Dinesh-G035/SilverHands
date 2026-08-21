@@ -2,14 +2,13 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Mic, MapPin, Star, Filter, CheckCircle2, ChevronRight, PlusCircle } from 'lucide-react';
 import { api } from '../api';
-import { mockServices } from '../data';
 
 const categories = ['All', 'Tutoring', 'Cooking', 'Tailoring', 'Gardening', 'Mentoring', 'Language', 'Music', 'Traditional Arts'];
 
 export default function ServicesMarketplacePage() {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
-  const [services, setServices] = useState(mockServices);
+  const [services, setServices] = useState([]);
   const [error, setError] = useState('');
   const navigate = useNavigate();
 

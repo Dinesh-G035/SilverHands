@@ -13,7 +13,9 @@ const AvailabilitySlotSchema = new Schema(
 
 const UserSchema = new Schema(
   {
-    mobile: { type: String, required: true, unique: true, index: true },
+    email: { type: String, required: true, unique: true, lowercase: true, trim: true, index: true },
+    mobile: { type: String, default: undefined, index: true, sparse: true },
+    passwordHash: { type: String, select: false, default: '' },
     name: { type: String, trim: true },
     role: {
       type: String,
@@ -42,6 +44,7 @@ const UserSchema = new Schema(
     },
     seniorMode: { type: Boolean, default: false },
     verificationStatus: {
+      emailVerified: { type: Boolean, default: false },
       mobileVerified: { type: Boolean, default: false },
       identityVerified: { type: Boolean, default: false },
       experienceVerified: { type: Boolean, default: false },

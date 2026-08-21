@@ -1,35 +1,40 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context';
-import { Phone, ArrowRight, ShieldCheck, UserCheck, Shield, Lock, Sparkles, Check } from 'lucide-react';
+import { Mail, ArrowRight, UserCheck, Shield, Lock } from 'lucide-react';
 import { api } from '../api';
 
 export default function LoginPage() {
   const [tab, setTab] = useState('login');
-  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [adminOtp, setAdminOtp] = useState('');
+  const [adminOtpSent, setAdminOtpSent] = useState(false);
   const [step, setStep] = useState(1);
   const [name, setName] = useState('');
-  const [selectedRole, setSelectedRole] = useState('user'); // 'user' | 'admin'
+  const [selectedRole, setSelectedRole] = useState('user');
   const [userType, setUserType] = useState('senior');
   const [language, setLanguageChoice] = useState('Tamil');
   const [location, setLocation] = useState('Chennai');
 
-  const { loginDemo, login } = useApp();
+  const { login } = useApp();
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [successInfo, setSuccessInfo] = useState('');
   const navigate = useNavigate();
 
   const handleRoleChange = (role) => {
     setSelectedRole(role);
     setError('');
     if (role === 'admin') {
-      setTab('login'); // Admin is login-only
+      setTab('login');
       setStep(1);
-      setPhone('9999988888');
+      setAdminPassword('');
+      setAdminOtp('');
+      setAdminOtpSent(false);
     } else {
-      setPhone('9876543210');
+      setEmail('');
+      setOtp('');
     }
   };
 
@@ -38,17 +43,44 @@ export default function LoginPage() {
     try {
       setBusy(true);
       setError('');
-      const cleanMobile = phone.replace(/\D/g, '').slice(-10);
-      const res = await api('/auth/send-otp', { method: 'POST', body: { mobile: cleanMobile } });
+      await api('/auth/send-otp', {
+        method: 'POST',
+        body: { email: email.trim(), purpose: tab === 'signup' ? 'signup' : 'login' },
+      });
       if (tab === 'signup') setTab('login');
       setStep(2);
-      if (res?.mockOtp) {
-        setOtp(res.mockOtp);
-        setSuccessInfo(`Default OTP for demo: ${res.mockOtp}`);
-      } else {
-        setOtp('');
-        setSuccessInfo('OTP sent to your phone number.');
-      }
+      setOtp('');
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleAdminOtp = async () => {
+    try {
+      setBusy(true);
+      setError('');
+      await api('/auth/send-otp', { method: 'POST', body: { email: email.trim(), purpose: 'login' } });
+      setAdminOtpSent(true);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleAdminLogin = async (e) => {
+    e.preventDefault();
+    try {
+      setBusy(true);
+      setError('');
+      const session = await api('/auth/admin-login', {
+        method: 'POST',
+        body: { email: email.trim(), password: adminPassword, otp: adminOtp || undefined },
+      });
+      login(session);
+      navigate('/admin');
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -61,11 +93,10 @@ export default function LoginPage() {
     try {
       setBusy(true);
       setError('');
-      const cleanMobile = phone.replace(/\D/g, '').slice(-10);
       const session = await api('/auth/verify-otp', {
         method: 'POST',
         body: {
-          mobile: cleanMobile,
+          email: email.trim(),
           otp,
           name: name || undefined,
           role: selectedRole === 'admin' ? 'admin' : userType === 'customer' ? 'customer' : 'provider',
@@ -79,23 +110,6 @@ export default function LoginPage() {
       }
     } catch (requestError) {
       setError(requestError.message);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleQuickRealLogin = async (role) => {
-    try {
-      setBusy(true);
-      setError('');
-      const session = await loginDemo(role);
-      if (role === 'admin' || session?.user?.role === 'admin') {
-        navigate('/admin');
-      } else {
-        navigate('/dashboard');
-      }
-    } catch (err) {
-      setError(err.message || 'Login failed');
     } finally {
       setBusy(false);
     }
@@ -181,30 +195,75 @@ export default function LoginPage() {
           </div>
         )}
 
-        {/* Login Form */}
-        {tab === 'login' && (
+        {/* Administrator Login Form */}
+        {tab === 'login' && selectedRole === 'admin' && (
+          <form onSubmit={handleAdminLogin} className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Admin Email Address</label>
+              <input
+                type="email"
+                required
+                placeholder="admin@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-purple-500 outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Password</label>
+              <input
+                type="password"
+                required
+                placeholder="Enter your password"
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.target.value)}
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-purple-500 outline-none"
+              />
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-semibold text-gray-700">Email OTP (optional)</label>
+                <button type="button" onClick={handleAdminOtp} disabled={busy} className="text-[11px] text-purple-700 font-bold hover:underline disabled:opacity-50">
+                  {adminOtpSent ? 'Resend OTP' : 'Send OTP'}
+                </button>
+              </div>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={6}
+                placeholder="Enter OTP for additional verification"
+                value={adminOtp}
+                onChange={(e) => setAdminOtp(e.target.value)}
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-purple-500 outline-none"
+              />
+            </div>
+            <button type="submit" disabled={busy} className="w-full py-3.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl shadow-md transition-all text-sm disabled:opacity-50">
+              {busy ? 'Signing in…' : 'Sign in as Administrator'}
+            </button>
+          </form>
+        )}
+
+        {/* User Login Form */}
+        {tab === 'login' && selectedRole === 'user' && (
           <div>
             {step === 1 ? (
               <form onSubmit={handleSendOtp} className="space-y-4">
                 <div>
                   <div className="flex justify-between items-center mb-1.5">
                     <label className="block text-xs font-semibold text-gray-700">
-                      {selectedRole === 'admin' ? 'Admin Mobile Number' : 'Mobile Number'}
+                      {selectedRole === 'admin' ? 'Admin Email Address' : 'Email Address'}
                     </label>
-                    <span className="text-[10px] text-primary-600 font-bold">
-                      {selectedRole === 'admin' ? 'Test: 99999 88888' : 'Test: 98765 43210'}
-                    </span>
                   </div>
 
                   <div className="relative">
-                    <span className="absolute left-3.5 top-3.5 text-sm font-medium text-gray-500">+91</span>
+                    <Mail className="absolute left-3.5 top-3.5 w-4 h-4 text-gray-500" />
                     <input
-                      type="tel"
+                      type="email"
                       required
-                      placeholder={selectedRole === 'admin' ? '99999 88888' : '98765 43210'}
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      className="w-full pl-14 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary-500 outline-none"
+                      placeholder="you@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary-500 outline-none"
                     />
                   </div>
                 </div>
@@ -216,7 +275,7 @@ export default function LoginPage() {
                     selectedRole === 'admin' ? 'bg-purple-600 hover:bg-purple-700' : 'gradient-bg'
                   }`}
                 >
-                  {busy ? 'Sending OTP to database…' : <>Continue with OTP <ArrowRight className="w-4 h-4" /></>}
+                  {busy ? 'Sending email OTP…' : <>Continue with OTP <ArrowRight className="w-4 h-4" /></>}
                 </button>
               </form>
             ) : (
@@ -224,10 +283,10 @@ export default function LoginPage() {
                 <div>
                   <div className="flex justify-between items-center mb-1.5">
                     <label className="block text-xs font-semibold text-gray-700">
-                      Enter OTP sent to +91 {phone || '98765 43210'}
+                      Enter OTP sent to {email || 'your email address'}
                     </label>
                     <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-md">
-                      {otp ? 'Demo OTP ready' : 'OTP sent to phone'}
+                      OTP sent to email
                     </span>
                   </div>
 
@@ -278,13 +337,13 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1">Mobile Number</label>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">Email Address</label>
               <input
-                type="tel"
+                type="email"
                 required
-                placeholder="+91 98765 43210"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-primary-500 outline-none"
               />
             </div>
@@ -352,37 +411,6 @@ export default function LoginPage() {
             </button>
           </form>
         )}
-
-        {/* 1-Click Real API Authentications */}
-        <div className="mt-6 pt-4 border-t border-gray-100 space-y-2">
-          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block text-center mb-2">
-            1-Click Real API Database Logins
-          </span>
-
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => handleQuickRealLogin('user')}
-              disabled={busy}
-              className="py-2.5 px-2 bg-primary-50 text-primary-700 font-bold rounded-xl text-xs hover:bg-primary-100 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
-            >
-              <UserCheck className="w-3.5 h-3.5" /> Login as User
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleQuickRealLogin('admin')}
-              disabled={busy}
-              className="py-2.5 px-2 bg-purple-50 text-purple-700 font-bold rounded-xl text-xs hover:bg-purple-100 transition-colors flex items-center justify-center gap-1.5 border border-purple-200 disabled:opacity-50"
-            >
-              <ShieldCheck className="w-3.5 h-3.5 text-purple-600" /> Login as Admin
-            </button>
-          </div>
-
-          <p className="text-[10px] text-gray-400 mt-3 text-center">
-            Connects to live MongoDB cluster with real JWT session tokens.
-          </p>
-        </div>
 
         {error && <p className="mt-3 text-center text-sm text-red-600 font-medium">{error}</p>}
       </div>

@@ -33,7 +33,7 @@ function getSkillIcon(name) {
 export default function SkillIdentificationPage() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { login, loginDemo, accessToken, isLoggedIn } = useApp();
+  const { accessToken, isLoggedIn } = useApp();
 
   const voiceProfile = location.state?.voiceProfile;
 
@@ -77,24 +77,14 @@ export default function SkillIdentificationPage() {
           body: { skills: skillNames, yearsOfExperience, profileTitle },
           token: accessToken,
         });
-        // Update context with returned user data if available
-        if (result?.user) {
-          // Re-fetch wouldn't be needed since we already have the token;
-          // just navigate forward
-        }
         navigate('/opportunities');
       } catch (requestError) {
         setError(requestError.message);
-        // Fallback: still navigate forward for demo purposes
-        loginDemo();
-        navigate('/opportunities');
       } finally {
         setBusy(false);
       }
     } else {
-      // Demo mode
-      loginDemo();
-      navigate('/opportunities');
+      navigate('/login');
     }
   };
 

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Star, ShieldCheck, MapPin, Globe, CheckCircle2, MessageCircle, Calendar, X, Clock, PlusCircle } from 'lucide-react';
-import { mockProviders, mockReviews, mockServices } from '../data';
 import { api } from '../api';
 import { useApp } from '../context';
 
@@ -29,19 +28,6 @@ export default function ProviderProfilePage() {
   const [bookingMode, setBookingMode] = useState('offline');
 
   useEffect(() => {
-    // 1. Initial fallback from mock providers
-    const localMock = mockProviders.find((p) => p.id === id) || mockProviders[0];
-    setProvider(localMock);
-
-    const localServices = mockServices.filter((s) => s.providerId === (localMock.id || id));
-    setServices(localServices.length > 0 ? localServices : mockServices.slice(0, 2));
-    setReviews(mockReviews);
-
-    if (localServices.length > 0) {
-      setSelectedServiceId(localServices[0].id);
-    }
-
-    // 2. Fetch real provider details from backend if it looks like an ObjectId
     if (id && id.length === 24) {
       api(`/users/provider/${id}`)
         .then((data) => {
@@ -179,7 +165,16 @@ export default function ProviderProfilePage() {
     }
   };
 
-  const currentProvider = provider || mockProviders[0];
+  const currentProvider = provider;
+
+  if (!currentProvider) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-16 text-center safe-bottom">
+        <h2 className="text-xl font-bold text-gray-800 mb-2">Provider not found</h2>
+        <p className="text-sm text-gray-500">This profile is unavailable or has not been published yet.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 safe-bottom">

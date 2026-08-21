@@ -1,6 +1,8 @@
 import request from 'supertest';
+import bcrypt from 'bcryptjs';
 import app from '../src/app.js';
 import { connectDB, disconnectDB } from '../src/config/db.js';
+import { User } from '../src/models/User.js';
 
 beforeAll(async () => {
   process.env.USE_IN_MEMORY_DB = 'true';
@@ -14,12 +16,12 @@ afterAll(async () => {
 describe('Auth & Session Module API Tests', () => {
   let accessToken;
   let refreshToken;
-  const testMobile = '9876543210';
+  const testEmail = 'test.provider@example.com';
 
-  it('POST /api/v1/auth/send-otp - should send OTP to mobile', async () => {
+  it('POST /api/v1/auth/send-otp - should send OTP to email', async () => {
     const res = await request(app)
       .post('/api/v1/auth/send-otp')
-      .send({ mobile: testMobile });
+      .send({ email: testEmail });
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -30,7 +32,8 @@ describe('Auth & Session Module API Tests', () => {
     const res = await request(app)
       .post('/api/v1/auth/verify-otp')
       .send({
-        mobile: testMobile,
+        email: testEmail,
+        mobile: '9876543210',
         otp: '123456',
         role: 'provider',
         name: 'Test Provider',
@@ -72,5 +75,44 @@ describe('Auth & Session Module API Tests', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
+  });
+
+  it('POST /api/v1/auth/send-otp - should reject duplicate email during signup', async () => {
+    const res = await request(app)
+      .post('/api/v1/auth/send-otp')
+      .send({ email: testEmail, purpose: 'signup' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toBe('Duplicate value entered for email. Please use another value.');
+  });
+
+  it('POST /api/v1/auth/verify-otp - should reject duplicate mobile values', async () => {
+    await request(app)
+      .post('/api/v1/auth/send-otp')
+      .send({ email: 'another.provider@example.com' });
+
+    const res = await request(app)
+      .post('/api/v1/auth/verify-otp')
+      .send({ email: 'another.provider@example.com', mobile: '9876543210', otp: '123456', role: 'provider' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toBe('Duplicate value entered for mobile. Please use another value.');
+  });
+
+  it('POST /api/v1/auth/admin-login - should authenticate an admin with email and password', async () => {
+    await User.create({
+      email: 'security.admin@example.com',
+      name: 'Security Admin',
+      role: 'admin',
+      passwordHash: await bcrypt.hash('correct-password', 10),
+    });
+
+    const res = await request(app)
+      .post('/api/v1/auth/admin-login')
+      .send({ email: 'security.admin@example.com', password: 'correct-password' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.accessToken).toBeDefined();
+    expect(res.body.data.user.role).toBe('admin');
   });
 });

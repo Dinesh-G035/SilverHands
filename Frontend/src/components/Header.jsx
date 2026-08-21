@@ -19,7 +19,6 @@ import {
   Star,
   Shield,
   ShieldCheck,
-  RefreshCw,
   ChevronDown,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -78,7 +77,6 @@ export default function Header() {
     currentUser,
     isAdmin,
     userRole,
-    switchRole,
   } = useApp();
 
   const [showLangMenu, setShowLangMenu] = useState(false);
@@ -109,11 +107,6 @@ export default function Header() {
     navigate('/');
   };
 
-  const handleToggleRole = () => {
-    const nextRole = isAdmin ? 'user' : 'admin';
-    switchRole(nextRole);
-    setShowUserMenu(false);
-  };
 
   const sidebarLinks = [
     { label: 'Home', icon: Home, path: '/' },
@@ -128,8 +121,8 @@ export default function Header() {
   return (
     <>
       <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-lg border-b border-gray-100 shadow-sm" id="main-header">
-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
+        <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center gap-4">
+          <div className="flex items-center gap-3 cursor-pointer shrink-0 basis-56" onClick={() => navigate('/')}>
             <div className="w-10 h-10 rounded-xl gradient-bg flex items-center justify-center shadow-md shadow-primary-300/30">
               <span className="text-white text-lg font-bold">S</span>
             </div>
@@ -141,7 +134,7 @@ export default function Header() {
             </div>
           </div>
 
-          <nav className="hidden lg:flex items-center gap-1">
+          <nav className="hidden xl:flex flex-1 min-w-0 items-center justify-center gap-1">
             {sidebarLinks.map((link) => {
               const Icon = link.icon;
               const isActive = location.pathname === link.path;
@@ -149,7 +142,7 @@ export default function Header() {
                 <button
                   key={link.path}
                   onClick={() => navigate(link.path)}
-                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium transition-all ${
+                  className={`flex items-center gap-1.5 px-2.5 2xl:px-3 py-2 rounded-xl whitespace-nowrap text-sm font-medium transition-all ${
                     isActive
                       ? 'bg-primary-50 text-primary-700 font-bold'
                       : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
@@ -162,7 +155,7 @@ export default function Header() {
             })}
           </nav>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 shrink-0">
             {/* Language Selector */}
             <div className="relative">
               <button
@@ -320,7 +313,7 @@ export default function Header() {
                     {(currentUser?.name || 'U').charAt(0)}
                   </div>
                   <div className="hidden sm:block text-left">
-                    <span className="text-xs font-bold text-gray-800 block leading-tight truncate max-w-[100px]">
+                    <span className="text-xs font-bold text-gray-800 block leading-tight truncate max-w-25">
                       {currentUser?.name?.split(' ')[0] || 'User'}
                     </span>
                     <span
@@ -395,18 +388,6 @@ export default function Header() {
                         Messages
                       </button>
 
-                      {/* Quick Role Switcher */}
-                      <button
-                        onClick={handleToggleRole}
-                        className="w-full flex items-center justify-between px-3 py-2 rounded-xl hover:bg-primary-50 text-primary-700 transition-colors border border-dashed border-primary-200 mt-1"
-                        title="Toggle role for testing"
-                      >
-                        <span className="flex items-center gap-2">
-                          <RefreshCw className="w-3.5 h-3.5" />
-                          Switch to {isAdmin ? 'User' : 'Admin'}
-                        </span>
-                        <span className="text-[10px] font-bold text-gray-400">Toggle</span>
-                      </button>
                     </div>
 
                     {/* Logout Button */}
@@ -435,7 +416,7 @@ export default function Header() {
 
             <button
               onClick={() => setShowSidebar(true)}
-              className="p-2 rounded-xl hover:bg-gray-100 text-gray-500 lg:hidden"
+              className="p-2 rounded-xl hover:bg-gray-100 text-gray-500 xl:hidden"
               id="menu-toggle"
             >
               <Menu className="w-5 h-5" />
@@ -479,12 +460,6 @@ export default function Header() {
                       Role: {isAdmin ? 'Admin' : 'User'}
                     </span>
                   </div>
-                  <button
-                    onClick={handleToggleRole}
-                    className="text-[10px] bg-white border border-gray-200 px-2 py-1 rounded-lg font-bold text-primary-700"
-                  >
-                    Switch Role
-                  </button>
                 </div>
               )}
 

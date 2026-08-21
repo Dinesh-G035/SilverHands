@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs';
+import nodemailer from 'nodemailer';
 import { OTP } from '../models/OTP.js';
 import { env } from '../config/env.js';
 import { logger } from '../utils/logger.js';
@@ -7,80 +8,74 @@ import { AppError } from '../utils/appError.js';
 export class OTPService {
   /**
    * Generates a 6-digit OTP, hashes it, saves to DB with 5-minute expiry.
-   * @param {string} mobile - 10-digit Indian mobile number
+  * @param {string} email - User email address
    * @returns {Promise<{ message: string, mockOtp?: string }>}
    */
-  static async sendOTP(mobile) {
+  static async sendOTP(email) {
+    const normalizedEmail = email.trim().toLowerCase();
     const fifteenMinsAgo = new Date(Date.now() - 15 * 60 * 1000);
     const recentOtps = await OTP.countDocuments({
-      mobile,
+      email: normalizedEmail,
       createdAt: { $gte: fifteenMinsAgo },
     });
 
     if (recentOtps >= 5) {
-      throw new AppError('Too many OTP requests for this mobile number. Please try again after 15 minutes.', 429);
+      throw new AppError('Too many OTP requests for this email address. Please try again after 15 minutes.', 429);
     }
 
-    const useMockOtp = env.OTP_PROVIDER === 'mock' && (env.NODE_ENV === 'development' || env.NODE_ENV === 'test');
+    const useMockOtp = env.NODE_ENV === 'test' || (env.OTP_PROVIDER === 'mock' && env.NODE_ENV === 'development');
     const otpCode = useMockOtp ? '123456' : Math.floor(100000 + Math.random() * 900000).toString();
     const otpHash = await bcrypt.hash(otpCode, 8);
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
-    await OTP.deleteMany({ mobile });
+    await OTP.deleteMany({ email: normalizedEmail });
 
     await OTP.create({
-      mobile,
+      email: normalizedEmail,
       otpHash,
       attemptsCount: 0,
       expiresAt,
     });
 
-    if (env.OTP_PROVIDER === 'twilio') {
-      const { TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER } = env;
-      if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_PHONE_NUMBER) {
-        throw new AppError('Twilio OTP provider is not configured. Please set the Twilio credentials before enabling real OTP delivery.', 500);
+    if (env.OTP_PROVIDER === 'email' && !useMockOtp) {
+      if (!env.SMTP_HOST || !env.SMTP_USER || !env.SMTP_PASSWORD || !env.SMTP_FROM) {
+        throw new AppError('Email OTP provider is not configured. Please set the SMTP credentials before enabling email OTP delivery.', 500);
       }
 
-      const authHeader = Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString('base64');
-      const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Basic ${authHeader}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          To: `+91${mobile}`,
-          From: TWILIO_PHONE_NUMBER,
-          Body: `Your SilverHands OTP is ${otpCode}. It is valid for 5 minutes.`,
-        }).toString(),
+      const transporter = nodemailer.createTransport({
+        host: env.SMTP_HOST,
+        port: env.SMTP_PORT,
+        secure: env.SMTP_PORT === 465,
+        auth: { user: env.SMTP_USER, pass: env.SMTP_PASSWORD },
       });
 
-      const twilioPayload = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new AppError(twilioPayload.message || 'Failed to send OTP via Twilio.', 500);
-      }
-
-      logger.info(`Twilio SMS OTP sent to ${mobile}.`);
+      await transporter.sendMail({
+        from: env.SMTP_FROM,
+        to: normalizedEmail,
+        subject: 'Your SilverHands OTP',
+        text: `Your SilverHands OTP is ${otpCode}. It is valid for 5 minutes.`,
+      });
+      logger.info(`Email OTP sent to ${normalizedEmail}.`);
     } else if (useMockOtp) {
-      logger.info(`[DEV MOCK OTP] Mobile: ${mobile} -> OTP: ${otpCode}`);
+      logger.info(`[DEV MOCK OTP] Email: ${normalizedEmail} -> OTP: ${otpCode}`);
     } else {
-      logger.warn(`OTP provider is not configured. Returning a generated code only for local testing: ${mobile} -> ${otpCode}`);
+      logger.warn(`OTP provider is not configured. Generated code is unavailable for email: ${normalizedEmail}`);
     }
 
     return {
-      message: 'OTP sent successfully to ' + mobile,
+      message: 'OTP sent successfully to ' + normalizedEmail,
       ...(useMockOtp ? { mockOtp: otpCode } : {}),
     };
   }
 
   /**
    * Verifies the OTP code entered by the user.
-   * @param {string} mobile
+  * @param {string} email
    * @param {string} otpCode
    * @returns {Promise<boolean>}
    */
-  static async verifyOTP(mobile, otpCode) {
-    const record = await OTP.findOne({ mobile });
+  static async verifyOTP(email, otpCode) {
+    const record = await OTP.findOne({ email: email.trim().toLowerCase() });
 
     if (!record) {
       throw new AppError('OTP expired or not requested. Please request a new OTP.', 400);

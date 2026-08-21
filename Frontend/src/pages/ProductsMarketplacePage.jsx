@@ -3,14 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { Search, ShoppingBag, Star, Plus, PlusCircle, Check } from 'lucide-react';
 import { api } from '../api';
 import { useApp } from '../context';
-import { mockProducts } from '../data';
 
 const categories = ['All', 'Food', 'Handicrafts', 'Clothing', 'Art', 'Home Décor', 'Traditional Products'];
 
 export default function ProductsMarketplacePage() {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [cartCount, setCartCount] = useState(0);
-  const [products, setProducts] = useState(mockProducts);
+  const [products, setProducts] = useState([]);
   const [addedNotice, setAddedNotice] = useState('');
   const [error, setError] = useState('');
   const { accessToken } = useApp();
@@ -38,16 +37,13 @@ export default function ProductsMarketplacePage() {
             inStock: (p.stock || 1) > 0,
           }));
 
-          const existingTitles = new Set(backendMapped.map((b) => b.name.toLowerCase()));
-          const extraMocks = mockProducts.filter((m) => !existingTitles.has(m.name.toLowerCase()));
-
-          setProducts([...backendMapped, ...extraMocks]);
+          setProducts(backendMapped);
         } else {
-          setProducts(mockProducts);
+          setProducts([]);
         }
       })
       .catch(() => {
-        setProducts(mockProducts);
+        setProducts([]);
       });
   }, [selectedCategory]);
 

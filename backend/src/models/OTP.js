@@ -4,7 +4,7 @@ const { Schema } = mongoose;
 
 const OTPSchema = new Schema(
   {
-    mobile: { type: String, required: true, index: true },
+    email: { type: String, required: true, lowercase: true, trim: true, index: true },
     otpHash: { type: String, required: true },
     attemptsCount: { type: Number, default: 0 },
     expiresAt: { type: Date, required: true },

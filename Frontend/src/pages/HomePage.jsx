@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Search, Mic, ArrowRight, Sparkles, ShieldCheck, Clock, IndianRupee, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { mockCategories, mockProviders, mockServices } from '../data';
 import { useApp } from '../context';
 import { api } from '../api';
 
@@ -9,16 +8,16 @@ export default function HomePage() {
   const navigate = useNavigate();
   const { setCurrentTab } = useApp();
 
-  const [topProviders, setTopProviders] = useState(mockProviders.slice(0, 3));
-  const [categoriesList, setCategoriesList] = useState(mockCategories);
-  const [servicesCount, setServicesCount] = useState(25);
+  const [topProviders, setTopProviders] = useState([]);
+  const [categoriesList, setCategoriesList] = useState([]);
+  const [servicesCount, setServicesCount] = useState(0);
 
   useEffect(() => {
     // Dynamically fetch live published services from backend
     api('/services?limit=10')
       .then((data) => {
         if (Array.isArray(data) && data.length > 0) {
-          setServicesCount(data.length + 150);
+          setServicesCount(data.length);
 
           // Extract dynamic top providers
           const mapped = data.slice(0, 3).map((s) => ({
@@ -42,12 +41,12 @@ export default function HomePage() {
             if (s.category) counts[s.category] = (counts[s.category] || 0) + 1;
           });
 
-          setCategoriesList((prev) =>
-            prev.map((c) => ({
-              ...c,
-              count: (counts[c.name] || 0) + (c.count || 20),
-            }))
-          );
+          setCategoriesList(Object.entries(counts).map(([name, count], index) => ({
+            id: name,
+            name,
+            count,
+            icon: ['📚', '🍳', '🧵', '🌿'][index % 4],
+          })));
         }
       })
       .catch(() => {});

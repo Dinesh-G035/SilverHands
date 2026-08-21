@@ -1,17 +1,47 @@
 import app from './app.js';
+import bcrypt from 'bcryptjs';
 import { connectDB, disconnectDB } from './config/db.js';
 import { env } from './config/env.js';
 import { logger } from './utils/logger.js';
-import { seedDatabase } from './scripts/seed.js';
+import { User } from './models/User.js';
+
+const provisionAdminAccount = async () => {
+  if (!env.ADMIN_EMAIL || !env.ADMIN_PASSWORD) {
+    throw new Error('ADMIN_EMAIL and ADMIN_PASSWORD must be configured before starting the server.');
+  }
+
+  const email = env.ADMIN_EMAIL.trim().toLowerCase();
+  const existingUser = await User.findOne({ email });
+
+  if (existingUser && existingUser.role !== 'admin') {
+    throw new Error(`Configured admin email is already registered as ${existingUser.role}.`);
+  }
+
+  const passwordHash = await bcrypt.hash(env.ADMIN_PASSWORD, 12);
+  await User.updateOne(
+    { email },
+    {
+      $set: {
+        role: 'admin',
+        passwordHash,
+        isActive: true,
+        'verificationStatus.emailVerified': true,
+      },
+      $setOnInsert: {
+        email,
+        name: 'Platform Administrator',
+      },
+    },
+    { upsert: true }
+  );
+
+  logger.info(`Admin account provisioned for ${email}.`);
+};
 
 const startServer = async () => {
   try {
     await connectDB();
-
-    // Auto-seed initial dynamic records if database is fresh/empty
-    await seedDatabase(false).catch((err) => {
-      logger.warn(`Auto-seed note: ${err.message}`);
-    });
+    await provisionAdminAccount();
 
     const server = app.listen(env.PORT, () => {
       logger.info(`=======================================================`);

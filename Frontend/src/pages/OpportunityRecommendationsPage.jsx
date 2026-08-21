@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sparkles, TrendingUp, ArrowRight, IndianRupee, PlusCircle } from 'lucide-react';
-import { mockOpportunities } from '../data';
 import { api } from '../api';
 import { useApp } from '../context';
 
@@ -9,7 +8,7 @@ export default function OpportunityRecommendationsPage() {
   const { accessToken, currentUser } = useApp();
   const navigate = useNavigate();
 
-  const [opportunities, setOpportunities] = useState(mockOpportunities);
+  const [opportunities, setOpportunities] = useState([]);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -37,9 +36,7 @@ export default function OpportunityRecommendationsPage() {
             setOpportunities(mapped);
           }
         })
-        .catch(() => {
-          // Keep mock opportunities
-        })
+        .catch(() => setOpportunities([]))
         .finally(() => setBusy(false));
     }
   }, [accessToken]);
