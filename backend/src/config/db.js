@@ -1,8 +1,27 @@
 import mongoose from 'mongoose';
 import { env } from './env.js';
 import { logger } from '../utils/logger.js';
+import { User } from '../models/User.js';
 
 let mongodInstance = null;
+
+const reconcileUserIndexes = async () => {
+  const usersCollectionExists = await User.db.db
+    .listCollections({ name: User.collection.name }, { nameOnly: true })
+    .hasNext();
+
+  if (!usersCollectionExists) return;
+
+  const indexes = await User.collection.indexes();
+  const mobileIndex = indexes.find((index) => index.name === 'mobile_1');
+
+  if (mobileIndex?.unique && !mobileIndex.sparse) {
+    await User.collection.dropIndex('mobile_1');
+    logger.info('Removed obsolete unique mobile index.');
+  }
+
+  await User.syncIndexes();
+};
 
 /**
  * Establishes database connection with strict fallback policy.
@@ -38,6 +57,7 @@ export const connectDB = async () => {
       serverSelectionTimeoutMS: 8000,
     });
     logger.info(`MongoDB Connected: ${conn.connection.host} / Database: ${conn.connection.name}`);
+    await reconcileUserIndexes();
     return conn;
   } catch (error) {
     logger.error(`Failed to connect to MongoDB at ${uriToConnect}: ${error.message}`);
