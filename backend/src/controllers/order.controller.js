@@ -5,7 +5,6 @@ import { Product } from '../models/Product.js';
 import { Notification } from '../models/Notification.js';
 import { sendSuccess } from '../utils/apiResponse.js';
 import { AppError } from '../utils/appError.js';
-import { env } from '../config/env.js';
 
 export const createOrder = async (req, res, next) => {
   try {

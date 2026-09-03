@@ -1,5 +1,4 @@
 import crypto from 'crypto';
-import { env } from '../config/env.js';
 import { logger } from '../utils/logger.js';
 
 export class PaymentService {
@@ -32,7 +31,7 @@ export class PaymentService {
 
     const body = `${razorpayOrderId}|${razorpayPaymentId}`;
     const expectedSignature = crypto
-      .createHmac('sha256', env.RAZORPAY_KEY_SECRET)
+      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
       .update(body)
       .digest('hex');
 
@@ -53,7 +52,7 @@ export class PaymentService {
     if (!signature || !rawBodyBuffer) return false;
 
     const expectedSignature = crypto
-      .createHmac('sha256', env.RAZORPAY_WEBHOOK_SECRET)
+      .createHmac('sha256', process.env.RAZORPAY_WEBHOOK_SECRET)
       .update(rawBodyBuffer)
       .digest('hex');
 

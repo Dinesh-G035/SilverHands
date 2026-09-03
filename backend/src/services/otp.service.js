@@ -1,7 +1,6 @@
 import bcrypt from 'bcryptjs';
 import nodemailer from 'nodemailer';
 import { OTP } from '../models/OTP.js';
-import { env } from '../config/env.js';
 import { logger } from '../utils/logger.js';
 import { AppError } from '../utils/appError.js';
 
@@ -23,7 +22,7 @@ export class OTPService {
       throw new AppError('Too many OTP requests for this email address. Please try again after 15 minutes.', 429);
     }
 
-    const useMockOtp = env.NODE_ENV === 'test' || (env.OTP_PROVIDER === 'mock' && env.NODE_ENV === 'development');
+    const useMockOtp = process.env.NODE_ENV === 'test' || (process.env.OTP_PROVIDER === 'mock' && process.env.NODE_ENV === 'development');
     const otpCode = useMockOtp ? '123456' : Math.floor(100000 + Math.random() * 900000).toString();
     const otpHash = await bcrypt.hash(otpCode, 8);
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
@@ -37,20 +36,20 @@ export class OTPService {
       expiresAt,
     });
 
-    if (env.OTP_PROVIDER === 'email' && !useMockOtp) {
-      if (!env.SMTP_HOST || !env.SMTP_USER || !env.SMTP_PASSWORD || !env.SMTP_FROM) {
+    if (process.env.OTP_PROVIDER === 'email' && !useMockOtp) {
+      if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASSWORD || !process.env.SMTP_FROM) {
         throw new AppError('Email OTP provider is not configured. Please set the SMTP credentials before enabling email OTP delivery.', 500);
       }
 
       const transporter = nodemailer.createTransport({
-        host: env.SMTP_HOST,
-        port: env.SMTP_PORT,
-        secure: env.SMTP_PORT === 465,
-        auth: { user: env.SMTP_USER, pass: env.SMTP_PASSWORD },
+        host: process.env.SMTP_HOST,
+        port: parseInt(process.env.SMTP_PORT || '587', 10),
+        secure: parseInt(process.env.SMTP_PORT || '587', 10) === 465,
+        auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD },
       });
 
       await transporter.sendMail({
-        from: env.SMTP_FROM,
+        from: process.env.SMTP_FROM,
         to: normalizedEmail,
         subject: 'Your SilverHands OTP',
         text: `Your SilverHands OTP is ${otpCode}. It is valid for 5 minutes.`,

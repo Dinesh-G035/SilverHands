@@ -1,7 +1,6 @@
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { env } from '../config/env.js';
 import { User } from '../models/User.js';
 import { Session } from '../models/Session.js';
 import { OTPService } from '../services/otp.service.js';
@@ -16,12 +15,12 @@ import { serializeUserPublic } from '../utils/serializers.js';
  * @returns {{accessToken: string, refreshToken: string, refreshTokenHash: string}}
  */
 function generateTokens(userId, role) {
-  const accessToken = jwt.sign({ id: userId, role }, env.JWT_SECRET, {
-    expiresIn: env.JWT_EXPIRES_IN,
+  const accessToken = jwt.sign({ id: userId, role }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRES_IN,
   });
 
-  const refreshToken = jwt.sign({ id: userId, role }, env.JWT_REFRESH_SECRET, {
-    expiresIn: env.JWT_REFRESH_EXPIRES_IN,
+  const refreshToken = jwt.sign({ id: userId, role }, process.env.JWT_REFRESH_SECRET, {
+    expiresIn: process.env.JWT_REFRESH_EXPIRES_IN,
   });
 
   const refreshTokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
@@ -155,7 +154,7 @@ export const refreshAccessToken = async (req, res, next) => {
 
     let decoded;
     try {
-      decoded = jwt.verify(refreshToken, env.JWT_REFRESH_SECRET);
+      decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
     } catch (err) {
       throw new AppError('Invalid or expired refresh token. Please login again.', 401);
     }

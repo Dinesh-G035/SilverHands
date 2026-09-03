@@ -1,16 +1,18 @@
 import express from 'express';
 import cors from 'cors';
+import dotenv from 'dotenv';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import path from 'path';
 import swaggerUi from 'swagger-ui-express';
 
-import { env } from './config/env.js';
 import { swaggerSpec } from './config/swagger.js';
 import { globalLimiter } from './middleware/rateLimiter.middleware.js';
 import { rawBodyMiddleware } from './middleware/rawBody.middleware.js';
 import { globalErrorHandler } from './middleware/error.middleware.js';
 import v1Router from './routes/v1/index.js';
+
+dotenv.config();
 
 const app = express();
 
@@ -20,13 +22,13 @@ app.use(helmet());
 // CORS configuration
 app.use(
   cors({
-    origin: [env.CLIENT_URL, 'http://localhost:5173', 'http://localhost:3000'],
+    origin: [process.env.CLIENT_URL, 'http://localhost:5173', 'http://localhost:3000'],
     credentials: true,
   })
 );
 
 // Logging middleware
-if (env.NODE_ENV !== 'test') {
+if (process.env.NODE_ENV !== 'test') {
   app.use(morgan('dev'));
 }
 
@@ -57,7 +59,7 @@ app.get(['/health', '/api/health', '/api/v1/health'], (_req, res) => {
     status: 'healthy',
     timestamp: new Date().toISOString(),
     uptimeSeconds: Math.floor(process.uptime()),
-    environment: env.NODE_ENV,
+    environment: process.env.NODE_ENV,
     version: '1.0.0',
   });
 });

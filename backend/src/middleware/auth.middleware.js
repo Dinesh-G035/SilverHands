@@ -1,5 +1,4 @@
 import jwt from 'jsonwebtoken';
-import { env } from '../config/env.js';
 import { User } from '../models/User.js';
 import { AppError } from '../utils/appError.js';
 
@@ -20,7 +19,7 @@ export const protect = async (req, _res, next) => {
 
     let decoded;
     try {
-      decoded = jwt.verify(token, env.JWT_SECRET);
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
     } catch (err) {
       return next(new AppError('Invalid or expired access token. Please login again.', 401));
     }

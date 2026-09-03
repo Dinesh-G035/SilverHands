@@ -1,5 +1,4 @@
 import mongoose from 'mongoose';
-import { env } from './env.js';
 import { logger } from '../utils/logger.js';
 import { User } from '../models/User.js';
 
@@ -28,10 +27,10 @@ const reconcileUserIndexes = async () => {
  * @returns {Promise<typeof mongoose>}
  */
 export const connectDB = async () => {
-  const isTest = env.NODE_ENV === 'test';
-  const useInMemory = env.USE_IN_MEMORY_DB || isTest;
+  const isTest = process.env.NODE_ENV === 'test';
+  const useInMemory = process.env.USE_IN_MEMORY_DB === 'true' || isTest;
 
-  let uriToConnect = env.MONGODB_URI;
+  let uriToConnect = process.env.MONGODB_URI;
 
   if (useInMemory) {
     logger.info('USE_IN_MEMORY_DB or NODE_ENV=test enabled. Launching MongoMemoryServer...');
@@ -69,7 +68,7 @@ export const connectDB = async () => {
       logger.error('2. Set MONGODB_URI in backend/.env to your MongoDB Atlas connection string');
       logger.error('3. Set USE_IN_MEMORY_DB=true in backend/.env for zero-dependency demo mode');
       logger.error('================================================================');
-      if (env.NODE_ENV !== 'test') {
+      if (process.env.NODE_ENV !== 'test') {
         process.exit(1);
       }
     }
